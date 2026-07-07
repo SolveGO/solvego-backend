@@ -1,4 +1,4 @@
-name: CI
+name: Branch CI
 
 on:
   push:
@@ -8,12 +8,10 @@ on:
       - 'fix/**'
       - 'chore/**'
       - 'infra/**'
-  pull_request:
-    branches:
-      - main
 
 jobs:
-  test:
+  branch-test:
+    name: Branch backend tests
     runs-on: ubuntu-latest
 
     services:
