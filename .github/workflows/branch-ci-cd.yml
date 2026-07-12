@@ -1,17 +1,26 @@
-name: Branch CI
+name: Branch CI/CD
 
 on:
   push:
     branches:
       - main
-      - 'feature/**'
+      - 'feat/**'
       - 'fix/**'
+      - 'refactor/**'
+      - 'test/**'
+      - 'docs/**'
+      - 'ci/**'
+      - 'perf/**'
       - 'chore/**'
       - 'infra/**'
 
+concurrency:
+  group: solvego-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  branch-test:
-    name: Branch backend tests
+  test:
+    name: Backend tests
     runs-on: ubuntu-latest
 
     services:
@@ -56,3 +65,26 @@ jobs:
         with:
           name: branch-jacoco-coverage-report
           path: build/reports/jacoco/test/html
+
+  deploy:
+    name: Deploy to EC2
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 15
+
+    steps:
+      - name: Deploy SolveGO
+        run: |
+          cd /home/ubuntu/solvego
+
+          git fetch origin main
+          git reset --hard origin/main
+
+          docker compose up --build -d
+
+          curl --fail \
+            --retry 20 \
+            --retry-delay 5 \
+            --retry-all-errors \
+            http://localhost:8080/actuator/health
