@@ -3,7 +3,7 @@
 
 > 사용자가 바둑 사활 문제를 등록하고 풀어볼 수 있는 백엔드 플랫폼
 
-- [Swagger UI — 서버 운영 중에만 접근 가능](http://배포주소/swagger-ui/index.html)
+- [API 문서 (Swagger UI)](http://배포주소/swagger-ui/index.html) *(서버 운영 중에만 접근 가능)*
 - [개발 블로그](https://forwarder1121.tistory.com/category/Project/SolveGO)
 
 ---
