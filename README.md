@@ -250,8 +250,8 @@ src/main/java/com/kdh/solvego
 ### 1. 저장소 복제
 
 ```bash
-git clone https://github.com/SolveGO/solvego-backend.git
-cd solvego-backend
+git clone https://github.com/SolveGO/solvego.git
+cd solvego
 ```
 
 
