@@ -261,9 +261,8 @@ cd solvego-backend
 프로젝트 루트에 `.env` 파일을 생성합니다.
 
 ```env
-MYSQL_DATABASE=solvego
-MYSQL_USER=solvego
-MYSQL_PASSWORD=your_password
+DB_USERNAME=solvego
+DB_PASSWORD=your_password
 MYSQL_ROOT_PASSWORD=your_root_password
 JWT_SECRET=your_jwt_secret
 ```
