@@ -156,6 +156,10 @@ GitHub Actions를 이용해 `main` 브랜치에 반영된 코드를 자동으로
 
 ### Validation 실패가 `400`이 아닌 `401`로 반환되는 문제
 
+<p align="center">
+  <img src="docs/images/error-dispatch-flow.png" width="900">
+</p>
+
 문제 등록 API에서 잘못된 요청 본문을 전달했을 때,
 `@Valid` 검증 실패로 `400 Bad Request`가 반환되어야 했지만
 `401 Unauthorized`가 반환되는 문제가 발생했습니다.
@@ -177,6 +181,10 @@ JWT 필터는 `ERROR dispatch`에서 다시 실행되지 않아 인증되지 않
 - [ERROR Dispatch 트러블슈팅 상세 기록](https://forwarder1121.tistory.com/32)
 
 ### 문제 목록 조회의 N+1 문제
+
+<p align="center">
+  <img src="docs/images/n-plus-one-fetch-join.png" width="900">
+</p>
 
 문제 목록 응답에 작성자 이름이 포함되어 있어,
 각 `Problem`의 지연 로딩된 `creator`를 조회하는 과정에서
