@@ -4,6 +4,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: solvego-app
+    restart: unless-stopped
     ports:
       - "8080:8080"
     environment:
@@ -19,6 +20,7 @@ services:
   db:
     image: mysql:8.0
     container_name: solvego-db
+    restart: unless-stopped
     ports:
       - "3307:3306"
     environment:
