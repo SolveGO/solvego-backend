@@ -22,7 +22,7 @@ services:
     container_name: solvego-db
     restart: unless-stopped
     ports:
-      - "3307:3306"
+      - "3306:3306"
     environment:
       MYSQL_DATABASE: solvego
       MYSQL_USER: ${DB_USERNAME}
