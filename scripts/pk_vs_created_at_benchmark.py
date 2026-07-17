@@ -1,17 +1,14 @@
-import csv
-import os
 import random
+import subprocess
 import statistics
-import sys
 import time
-from typing import Dict, List
-
 import pymysql
 
-
+CONTAINER = "solvego-db"
+DATABASE = "solvego"
 WARMUP_COUNT = 10
 MEASURE_COUNT = 100
-OUTPUT_FILE = "pk_vs_created_at_benchmark_results.csv"
+
 
 QUERIES = {
     "created_at_without_index": """
@@ -36,60 +33,75 @@ QUERIES = {
 }
 
 
+def docker_inspect(format_string: str) -> str:
+    result = subprocess.run(
+        ["docker", "inspect", "--format", format_string, CONTAINER],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return result.stdout.strip()
+
+def get_mysql_password() -> str:
+    environment = docker_inspect(
+        "{{range .Config.Env}}{{println .}}{{end}}"
+    )
+
+    for line in environment.splitlines():
+        if line.startswith("MYSQL_ROOT_PASSWORD="):
+            return line.split("=", 1)[1]
+
+    raise RuntimeError("MYSQL_ROOT_PASSWORD를 찾지 못했습니다.")
+
+
 def execute_query(cursor, query: str) -> None:
     cursor.execute(query)
     cursor.fetchall()
 
 
 def measure_query(cursor, query: str) -> float:
-    start_ns = time.perf_counter_ns()
+    start = time.perf_counter_ns()
 
     cursor.execute(query)
     cursor.fetchall()
 
-    end_ns = time.perf_counter_ns()
+    end = time.perf_counter_ns()
 
-    return (end_ns - start_ns) / 1_000_000
+    return (end - start) / 1_000_000
 
-
-def print_summary(name: str, values: List[float]) -> None:
+def print_statistics(name: str, values: list[float]) -> None:
     print(f"\n[{name}]")
-    print(f"count   : {len(values)}")
-    print(f"mean    : {statistics.mean(values):.4f} ms")
-    print(f"median  : {statistics.median(values):.4f} ms")
-    print(f"min     : {min(values):.4f} ms")
-    print(f"max     : {max(values):.4f} ms")
-    print(f"stdev   : {statistics.stdev(values):.4f} ms")
+    print(f"실행 횟수: {len(values)}회")
+    print(f"평균: {statistics.mean(values):.4f} ms")
+    print(f"중앙값: {statistics.median(values):.4f} ms")
+    print(f"최솟값: {min(values):.4f} ms")
+    print(f"최댓값: {max(values):.4f} ms")
+    print(f"표준편차: {statistics.stdev(values):.4f} ms")
 
 
 def main() -> None:
-    db_host = os.getenv("DB_HOST", "127.0.0.1")
-    db_port = int(os.getenv("DB_PORT", "3307"))
-    db_name = os.getenv("DB_NAME", "solvego")
-    db_user = os.getenv("DB_USER")
-    db_password = os.getenv("DB_PASSWORD")
 
-    if not db_user or not db_password:
-        print("DB_USER와 DB_PASSWORD 환경변수가 필요합니다.")
-        sys.exit(1)
-
-    connection = pymysql.connect(
-        host=db_host,
-        port=db_port,
-        user=db_user,
-        password=db_password,
-        database=db_name,
-        charset="utf8mb4",
-        autocommit=True,
-        cursorclass=pymysql.cursors.Cursor,
-        connect_timeout=10,
-        read_timeout=30,
-        write_timeout=30,
+    password = get_mysql_password()
+    container_ip = docker_inspect(
+        "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}"
     )
 
-    results: Dict[str, List[float]] = {
-        name: [] for name in QUERIES
-    }
+    if not container_ip:
+        raise RuntimeError("MySQL 컨테이너 IP를 찾지 못했습니다.")
+
+    connection = pymysql.connect(
+        host=container_ip,
+        port=3306,
+        user="root",
+        password=password,
+        database=DATABASE,
+        charset="utf8mb4",
+        autocommit=True,
+    )
+
+    results = {}
+    for name in QUERIES:
+        results[name] = []
 
     try:
         with connection.cursor() as cursor:
@@ -113,6 +125,7 @@ def main() -> None:
             query_names = list(QUERIES.keys())
 
             for iteration in range(1, MEASURE_COUNT + 1):
+                # Randomize the query order to reduce execution-order bias.
                 random.shuffle(query_names)
 
                 for name in query_names:
@@ -131,7 +144,7 @@ def main() -> None:
     print("\n===== 결과 요약 =====")
 
     for name, values in results.items():
-        print_summary(name, values)
+        print_statistics(name, values)
 
     index_mean = statistics.mean(
         results["created_at_with_index"]
@@ -157,35 +170,7 @@ def main() -> None:
         f"{pk_mean / index_mean:.2f}배 빠름"
     )
 
-    with open(
-            OUTPUT_FILE,
-            "w",
-            newline="",
-            encoding="utf-8",
-    ) as csv_file:
-        writer = csv.writer(csv_file)
-        writer.writerow(
-            [
-                "query_type",
-                "iteration",
-                "elapsed_ms",
-            ]
-        )
 
-        for name, values in results.items():
-            for iteration, elapsed_ms in enumerate(
-                    values,
-                    start=1,
-            ):
-                writer.writerow(
-                    [
-                        name,
-                        iteration,
-                        f"{elapsed_ms:.6f}",
-                    ]
-                )
-
-    print(f"\nCSV 저장 완료: {OUTPUT_FILE}")
 
 
 if __name__ == "__main__":
