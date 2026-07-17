@@ -22,6 +22,7 @@ QUERIES = {
     """,
     "created_at_with_index": """
         SELECT *
+        
         FROM problems
         ORDER BY created_at DESC
         LIMIT 20

@@ -1,8 +1,6 @@
-import csv
 import statistics
 import subprocess
 import time
-
 import pymysql
 
 
@@ -137,25 +135,6 @@ def main() -> None:
         index_times,
     )
 
-    with open(
-            "benchmark_results.csv",
-            "w",
-            newline="",
-            encoding="utf-8",
-    ) as file:
-        writer = csv.writer(file)
-        writer.writerow(
-            ["run", "no_index_ms", "index_ms"]
-        )
-
-        for run, (no_index, index) in enumerate(
-                zip(no_index_times, index_times),
-                start=1,
-        ):
-            writer.writerow(
-                [run, f"{no_index:.6f}", f"{index:.6f}"]
-            )
-
     average_ratio = (
             statistics.mean(no_index_times)
             / statistics.mean(index_times)
@@ -168,7 +147,6 @@ def main() -> None:
     print("\n[성능 차이]")
     print(f"평균 기준: 약 {average_ratio:.2f}배")
     print(f"중앙값 기준: 약 {median_ratio:.2f}배")
-    print("\n상세 결과 저장: benchmark_results.csv")
 
 
 if __name__ == "__main__":
