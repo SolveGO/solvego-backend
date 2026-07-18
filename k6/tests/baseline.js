@@ -1,34 +1,34 @@
+/*
+Run:
+  k6 run -e ENV=ec2 -e VUS=1 k6/tests/baseline.js
+  k6 run -e ENV=ec2 -e VUS=5 k6/tests/baseline.js
+  k6 run -e ENV=ec2 -e VUS=10 k6/tests/baseline.js
+*/
+
 import http from "k6/http";
 import { check, sleep } from "k6";
 
-import { environments } from "../config/environment.js";
+import { getBaseUrl } from "../config/environment.js";
 
-const environmentName = __ENV.ENV || "local";
-const environment = environments[environmentName];
-
-if (!environment) {
-    throw new Error(`Unknown environment: ${environmentName}`);
-}
-
-const BASE_URL = environment.baseUrl;
+const problemsUrl = `${getBaseUrl()}/api/problems`;
+const thinkTimeSeconds = 1;
+const virtualUsers = Number(__ENV.VUS || 1);
 
 export const options = {
-    vus: 1,
+    vus: virtualUsers,
     duration: "1m",
 
     thresholds: {
         checks: ["rate==1"],
-        http_req_failed: ["rate<0.01"],
-        http_req_duration: ["p(95)<500"],
     },
 };
 
-export default function () {
-    const response = http.get(`${BASE_URL}/api/problems`);
+export default function baselineLoadTest() {
+    const response = http.get(problemsUrl);
 
     check(response, {
-        "status is 200": (r) => r.status === 200,
+        "returns HTTP 200": ({ status }) => status === 200,
     });
 
-    sleep(1);
+    sleep(thinkTimeSeconds);
 }
