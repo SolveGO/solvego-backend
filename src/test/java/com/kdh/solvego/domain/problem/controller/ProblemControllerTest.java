@@ -119,10 +119,31 @@ class ProblemControllerTest {
     }
 
     @Test
-    @DisplayName("문제 목록 조회에 성공한다")
+    @DisplayName("기본 페이지 설정으로 문제 목록 조회에 성공한다")
     void get_problems_success() throws Exception {
-        // when & then
         mockMvc.perform(get("/api/problems"))
+                .andExpect(status().isOk());
+
+        verify(problemService).getProblems(0, 20);
+    }
+
+    @Test
+    @DisplayName("요청한 페이지 번호와 크기로 문제 목록을 조회한다")
+    void get_problems_with_page_and_size_success() throws Exception {
+        mockMvc.perform(get("/api/problems")
+                        .param("page", "2")
+                        .param("size", "10"))
+                .andExpect(status().isOk());
+
+        verify(problemService).getProblems(2, 10);
+    }
+
+
+    @Test
+    @DisplayName("레거시 전체 문제 목록 조회에 성공한다")
+    void get_problems_legacy_success() throws Exception {
+        // when & then
+        mockMvc.perform(get("/api/problems/legacy"))
                 .andExpect(status().isOk());
 
         verify(problemService).getProblems();

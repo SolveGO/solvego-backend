@@ -1,9 +1,6 @@
 package com.kdh.solvego.domain.problem.controller;
 
-import com.kdh.solvego.domain.problem.dto.ProblemCreateRequest;
-import com.kdh.solvego.domain.problem.dto.ProblemCreateResponse;
-import com.kdh.solvego.domain.problem.dto.ProblemDetailResponse;
-import com.kdh.solvego.domain.problem.dto.ProblemListResponse;
+import com.kdh.solvego.domain.problem.dto.*;
 import com.kdh.solvego.domain.problem.service.ProblemService;
 import com.kdh.solvego.global.exception.ErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -68,16 +65,32 @@ public class ProblemController {
         return problemService.createProblem(userId, request);
     }
 
-
     @Operation(
-            summary = "문제 목록 조회",
-            description = "등록된 문제 목록을 최신순으로 조회합니다."
+            summary = "문제 목록 조회 (페이지네이션)",
+            description = "등록된 문제 목록을 최신순으로 페이지 단위로 조회합니다."
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "문제 목록 조회 성공")
     })
     @GetMapping
-    public ProblemListResponse getProblems() {
+    public ProblemPageResponse getProblems(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return problemService.getProblems(page, size);
+    }
+
+
+    @Operation(
+            summary = "[Legacy] 전체 문제 목록 조회",
+            description = "페이지네이션을 적용하지 않고 등록된 모든 문제를 최신순으로 조회합니다. 성능 비교를 위한 임시 API입니다.",
+            deprecated = true
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "전체 문제 목록 조회 성공")
+    })
+    @GetMapping("/legacy")
+    public ProblemListResponse getProblemsLegacy() {
         return problemService.getProblems();
     }
 

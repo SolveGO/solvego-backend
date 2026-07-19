@@ -54,7 +54,7 @@ class MvpApiFlowIntegrationTest {
         Long problemId = createProblem(accessToken);
 
         // 4. 문제 목록 조회
-        getProblemList();
+        getProblemList(problemId);
 
         // 5. 문제 상세 조회
         getProblemDetail(problemId);
@@ -115,11 +115,17 @@ class MvpApiFlowIntegrationTest {
         return jsonNode.get("problemId").asLong();
     }
 
-    private void getProblemList() throws Exception {
+    private void getProblemList(Long problemId) throws Exception {
         mockMvc.perform(get("/api/problems"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.problems").isArray());
+                .andExpect(jsonPath("$.problems").isArray())
+                .andExpect(jsonPath("$.problems[0].problemId").value(problemId))
+                .andExpect(jsonPath("$.problems[0].title").value("problem title"))
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(20))
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.totalPages").value(1));
     }
 
     private void getProblemDetail(Long problemId) throws Exception {
