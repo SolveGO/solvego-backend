@@ -8,6 +8,9 @@ import com.kdh.solvego.domain.problem.mapper.ProblemMapper;
 import com.kdh.solvego.domain.user.entity.User;
 import com.kdh.solvego.domain.user.repository.UserRepository;
 import com.kdh.solvego.domain.user.exception.UserNotFoundException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,6 +33,16 @@ public class ProblemService {
     public ProblemListResponse getProblems(){
         List<Problem> problems = problemRepository.findAllWithCreatorOrderByIdDesc();
         return problemMapper.toListResponse(problems);
+    }
+
+    @Transactional(readOnly = true)
+    public ProblemPageResponse getProblems(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+
+        Page<Problem> problemPage =
+                problemRepository.findAllWithCreatorOrderByIdDesc(pageable);
+
+        return problemMapper.toPageResponse(problemPage);
     }
 
     @Transactional

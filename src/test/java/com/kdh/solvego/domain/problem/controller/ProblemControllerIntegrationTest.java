@@ -90,7 +90,7 @@ class ProblemControllerIntegrationTest {
     }
 
     @Test
-    @DisplayName("문제 목록을 조회할 수 있다")
+    @DisplayName("기본 페이지 설정으로 문제 목록을 조회할 수 있다")
     void get_problems_success() throws Exception {
         // given
         String accessToken = signupAndLogin("username2", "1234");
@@ -98,6 +98,60 @@ class ProblemControllerIntegrationTest {
 
         // when & then
         mockMvc.perform(get("/api/problems"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.problems[0].problemId").value(problemId))
+                .andExpect(jsonPath("$.problems[0].title").value("problem title"))
+                .andExpect(jsonPath("$.problems[0].creatorName").value("username2"))
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(20))
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.totalPages").value(1));
+    }
+
+    @Test
+    @DisplayName("요청한 페이지 번호와 크기로 문제 목록을 조회할 수 있다")
+    void get_problems_with_pagination_success() throws Exception {
+        // given
+        String accessToken = signupAndLogin("username5", "1234");
+
+        Long firstProblemId = createProblem(accessToken);
+        Long secondProblemId = createProblem(accessToken);
+        Long thirdProblemId = createProblem(accessToken);
+
+        // when & then
+        mockMvc.perform(get("/api/problems")
+                        .param("page", "0")
+                        .param("size", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.problems.length()").value(2))
+                .andExpect(jsonPath("$.problems[0].problemId").value(thirdProblemId))
+                .andExpect(jsonPath("$.problems[1].problemId").value(secondProblemId))
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(2))
+                .andExpect(jsonPath("$.totalElements").value(3))
+                .andExpect(jsonPath("$.totalPages").value(2));
+
+        mockMvc.perform(get("/api/problems")
+                        .param("page", "1")
+                        .param("size", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.problems.length()").value(1))
+                .andExpect(jsonPath("$.problems[0].problemId").value(firstProblemId))
+                .andExpect(jsonPath("$.page").value(1))
+                .andExpect(jsonPath("$.size").value(2))
+                .andExpect(jsonPath("$.totalElements").value(3))
+                .andExpect(jsonPath("$.totalPages").value(2));
+    }
+
+    @Test
+    @DisplayName("레거시 API로 전체 문제 목록을 조회할 수 있다")
+    void get_problems_legacy_success() throws Exception {
+        // given
+        String accessToken = signupAndLogin("username6", "1234");
+        Long problemId = createProblem(accessToken);
+
+        // when & then
+        mockMvc.perform(get("/api/problems/legacy"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.problems[0].problemId").value(problemId))
                 .andExpect(jsonPath("$.problems[0].title").value("problem title"));

@@ -1,12 +1,9 @@
 package com.kdh.solvego.domain.problem.mapper;
 
-import com.kdh.solvego.domain.problem.dto.ProblemCreateRequest;
-import com.kdh.solvego.domain.problem.dto.ProblemDetailResponse;
-import com.kdh.solvego.domain.problem.dto.ProblemListResponse;
-import com.kdh.solvego.domain.problem.dto.ProblemSummaryResponse;
-import com.kdh.solvego.domain.problem.dto.WrongProblemResponse;
+import com.kdh.solvego.domain.problem.dto.*;
 import com.kdh.solvego.domain.problem.entity.Problem;
 import com.kdh.solvego.domain.user.entity.User;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -23,6 +20,19 @@ public class ProblemMapper {
                 request.nextPlayer(),
                 request.answerPosition(),
                 creator
+        );
+    }
+
+    public ProblemPageResponse toPageResponse(Page<Problem> problemPage) {
+        Page<ProblemSummaryResponse> responsePage =
+                problemPage.map(this::toSummaryResponse);
+
+        return new ProblemPageResponse(
+                responsePage.getContent(),
+                responsePage.getNumber(),
+                responsePage.getSize(),
+                responsePage.getTotalElements(),
+                responsePage.getTotalPages()
         );
     }
 
