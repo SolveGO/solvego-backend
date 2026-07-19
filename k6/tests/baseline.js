@@ -1,8 +1,7 @@
 /*
 Run:
-  k6 run -e ENV=ec2 -e VUS=1 k6/tests/baseline.js
-  k6 run -e ENV=ec2 -e VUS=5 k6/tests/baseline.js
-  k6 run -e ENV=ec2 -e VUS=10 k6/tests/baseline.js
+  k6 run -e ENV=ec2 -e VUS=1 -e ENDPOINT=paginated k6/tests/baseline.js
+  k6 run -e ENV=ec2 -e VUS=1 -e ENDPOINT=legacy k6/tests/baseline.js
 */
 
 import http from "k6/http";
@@ -10,7 +9,18 @@ import { check, sleep } from "k6";
 
 import { getBaseUrl } from "../config/environment.js";
 
-const problemsUrl = `${getBaseUrl()}/api/problems`;
+const endpoint = __ENV.ENDPOINT || "paginated";
+
+const paths = {
+    paginated: "/api/problems?page=0&size=20",
+    legacy: "/api/problems/legacy",
+};
+
+if (!paths[endpoint]) {
+    throw new Error(`Unsupported ENDPOINT: ${endpoint}`);
+}
+
+const problemsUrl = `${getBaseUrl()}${paths[endpoint]}`;
 const thinkTimeSeconds = 1;
 const virtualUsers = Number(__ENV.VUS || 1);
 
