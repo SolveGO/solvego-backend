@@ -1,5 +1,7 @@
 volumes:
   solvego-db-data:
+  solvego-prometheus-data:
+  solvego-grafana-data:
 
 services:
   db:
@@ -37,4 +39,29 @@ services:
     depends_on:
       db:
         condition: service_healthy
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: solvego-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yaml:/etc/prometheus/prometheus.yml:ro
+      - solvego-prometheus-data:/prometheus
+    depends_on:
+      - app
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: solvego-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - solvego-grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
 
