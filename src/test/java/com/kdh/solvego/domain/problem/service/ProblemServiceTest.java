@@ -1,13 +1,10 @@
 package com.kdh.solvego.domain.problem.service;
 
 import com.kdh.solvego.domain.common.vo.Position;
-import com.kdh.solvego.domain.problem.dto.ProblemCreateRequest;
-import com.kdh.solvego.domain.problem.dto.ProblemCreateResponse;
-import com.kdh.solvego.domain.problem.dto.ProblemDetailResponse;
-import com.kdh.solvego.domain.problem.dto.ProblemListResponse;
-import com.kdh.solvego.domain.problem.dto.ProblemSummaryResponse;
+import com.kdh.solvego.domain.problem.dto.*;
 import com.kdh.solvego.domain.problem.entity.PlayerColor;
 import com.kdh.solvego.domain.problem.entity.Problem;
+import com.kdh.solvego.domain.problem.exception.ProblemAccessDeniedException;
 import com.kdh.solvego.domain.problem.exception.ProblemNotFoundException;
 import com.kdh.solvego.domain.problem.mapper.ProblemMapper;
 import com.kdh.solvego.domain.problem.repository.ProblemRepository;
@@ -20,6 +17,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
@@ -33,6 +31,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+@ActiveProfiles("test")
 @ExtendWith(MockitoExtension.class)
 class ProblemServiceTest {
 
@@ -212,6 +211,100 @@ class ProblemServiceTest {
         verifyNoInteractions(problemMapper);
     }
 
+    @Test
+    @DisplayName("문제 작성자는 문제를 수정할 수 있다")
+    void update_problem_success() {
+        // given
+        Long userId = 1L;
+        Long problemId = 10L;
+
+        User creator = new User("creator", "encoded-password");
+        ReflectionTestUtils.setField(creator, "id", userId);
+
+        Problem problem = createProblem(creator, "old problem");
+        ReflectionTestUtils.setField(problem, "id", problemId);
+
+        ProblemUpdateRequest request = createProblemUpdateRequest();
+
+        when(problemRepository.findByIdWithCreator(problemId))
+                .thenReturn(Optional.of(problem));
+
+        // when
+        problemService.updateProblem(userId, problemId, request);
+
+        // then
+        assertThat(problem.getTitle()).isEqualTo("updated problem");
+        assertThat(problem.getDescription()).isEqualTo("updated description");
+        assertThat(problem.getBlackStones())
+                .containsExactly(new Position(5, 5));
+        assertThat(problem.getWhiteStones())
+                .containsExactly(new Position(6, 6));
+        assertThat(problem.getNextPlayer()).isEqualTo(PlayerColor.WHITE);
+        assertThat(problem.getAnswerPosition())
+                .isEqualTo(new Position(11, 11));
+
+        verify(problemRepository).findByIdWithCreator(problemId);
+        verify(problemRepository, never()).save(any(Problem.class));
+        verifyNoInteractions(userRepository, problemMapper);
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 문제를 수정하면 예외가 발생한다")
+    void update_problem_fails_when_problem_not_found() {
+        // given
+        Long userId = 1L;
+        Long problemId = 999L;
+
+        ProblemUpdateRequest request = createProblemUpdateRequest();
+
+        when(problemRepository.findByIdWithCreator(problemId))
+                .thenReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(
+                () -> problemService.updateProblem(userId, problemId, request)
+        )
+                .isInstanceOf(ProblemNotFoundException.class);
+
+        verify(problemRepository).findByIdWithCreator(problemId);
+        verify(problemRepository, never()).save(any(Problem.class));
+        verifyNoInteractions(userRepository, problemMapper);
+    }
+
+    @Test
+    @DisplayName("문제 작성자가 아니면 문제를 수정할 수 없다")
+    void update_problem_fails_when_user_is_not_creator() {
+        // given
+        Long creatorId = 1L;
+        Long otherUserId = 2L;
+        Long problemId = 10L;
+
+        User creator = new User("creator", "encoded-password");
+        ReflectionTestUtils.setField(creator, "id", creatorId);
+
+        Problem problem = createProblem(creator, "old problem");
+        ReflectionTestUtils.setField(problem, "id", problemId);
+
+        ProblemUpdateRequest request = createProblemUpdateRequest();
+
+        when(problemRepository.findByIdWithCreator(problemId))
+                .thenReturn(Optional.of(problem));
+
+        // when & then
+        assertThatThrownBy(
+                () -> problemService.updateProblem(otherUserId, problemId, request)
+        )
+                .isInstanceOf(ProblemAccessDeniedException.class);
+
+        assertThat(problem.getTitle()).isEqualTo("old problem");
+        assertThat(problem.getDescription()).isEqualTo("description");
+        assertThat(problem.getNextPlayer()).isEqualTo(PlayerColor.BLACK);
+
+        verify(problemRepository).findByIdWithCreator(problemId);
+        verify(problemRepository, never()).save(any(Problem.class));
+        verifyNoInteractions(userRepository, problemMapper);
+    }
+
     private ProblemCreateRequest createProblemCreateRequest() {
         return new ProblemCreateRequest(
                 "problem",
@@ -232,6 +325,17 @@ class ProblemServiceTest {
                 PlayerColor.BLACK,
                 new Position(10, 10),
                 creator
+        );
+    }
+
+    private ProblemUpdateRequest createProblemUpdateRequest() {
+        return new ProblemUpdateRequest(
+                "updated problem",
+                "updated description",
+                List.of(new Position(5, 5)),
+                List.of(new Position(6, 6)),
+                PlayerColor.WHITE,
+                new Position(11, 11)
         );
     }
 }

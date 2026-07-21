@@ -108,4 +108,24 @@ public class Problem {
     public PlayerColor getNextPlayer() {
         return nextPlayer;
     }
+
+    public Position getAnswerPosition() {
+        return answerPosition;
+    }
+
+    public void update(
+            String title,
+            String description,
+            List<Position> blackStones,
+            List<Position> whiteStones,
+            PlayerColor nextPlayer,
+            Position answerPosition
+    ) {
+        this.title = title;
+        this.description = description;
+        this.blackStones = blackStones;
+        this.whiteStones = whiteStones;
+        this.nextPlayer = nextPlayer;
+        this.answerPosition = answerPosition;
+    }
 }

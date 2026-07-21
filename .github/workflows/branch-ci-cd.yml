@@ -27,22 +27,21 @@ jobs:
       mysql:
         image: mysql:8.0
         env:
-          MYSQL_ALLOW_EMPTY_PASSWORD: yes
           MYSQL_DATABASE: solvego_test
+          MYSQL_ROOT_PASSWORD: root_password
         ports:
           - 3306:3306
         options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot --silent"
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot_password --silent"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=10
 
     env:
       SPRING_PROFILES_ACTIVE: test
-      DB_URL: jdbc:mysql://127.0.0.1:3306/solvego_test
-      DB_USERNAME: root
-      DB_PASSWORD:
-      JWT_SECRET: testtesttesttesttesttesttesttesttesttesttesttesttesttesttesttest
+      TEST_DB_URL: jdbc:mysql://127.0.0.1:3306/solvego_test
+      TEST_DB_USERNAME: root
+      TEST_DB_PASSWORD: root_password
 
     steps:
       - name: Checkout source code

@@ -23,6 +23,7 @@ import java.nio.charset.StandardCharsets;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
@@ -38,7 +39,7 @@ class MvpApiFlowIntegrationTest {
     private ObjectMapper objectMapper;
 
     @Test
-    @DisplayName("MVP 전체 흐름: 회원가입부터 오답 조회까지 성공한다")
+    @DisplayName("MVP 전체 흐름: 회원가입부터 문제 수정과 오답 조회까지 성공한다")
     void mvp_api_flow_success() throws Exception {
         // given
         String username = "flow" + System.nanoTime() % 1_000_000;
@@ -59,10 +60,16 @@ class MvpApiFlowIntegrationTest {
         // 5. 문제 상세 조회
         getProblemDetail(problemId);
 
-        // 6. 오답 제출
+        // 6. 문제 수정
+        updateProblem(accessToken, problemId);
+
+        // 7. 수정된 문제 상세 조회
+        getUpdatedProblemDetail(problemId);
+
+        // 8. 오답 제출
         submitWrongAttempt(accessToken, problemId);
 
-        // 7. 오답 문제 조회
+        // 9. 오답 문제 조회
         getWrongProblems(accessToken, problemId);
     }
 
@@ -156,7 +163,30 @@ class MvpApiFlowIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$[0].problemId").value(problemId))
-                .andExpect(jsonPath("$[0].title").value("problem title"));
+                .andExpect(jsonPath("$[0].title").value("updated problem title"));
+    }
+
+    private void updateProblem(String accessToken, Long problemId) throws Exception {
+        mockMvc.perform(put("/api/problems/{problemId}", problemId)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(accessToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(problemUpdateRequestJson()))
+                .andExpect(status().isNoContent());
+    }
+
+    private void getUpdatedProblemDetail(Long problemId) throws Exception {
+        mockMvc.perform(get("/api/problems/{problemId}", problemId))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.problemId").value(problemId))
+                .andExpect(jsonPath("$.title").value("updated problem title"))
+                .andExpect(jsonPath("$.description").value("updated problem description"))
+                .andExpect(jsonPath("$.blackStones[0].x").value(5))
+                .andExpect(jsonPath("$.blackStones[0].y").value(5))
+                .andExpect(jsonPath("$.whiteStones[0].x").value(6))
+                .andExpect(jsonPath("$.whiteStones[0].y").value(6))
+                .andExpect(jsonPath("$.nextPlayer").value("WHITE"))
+                .andExpect(jsonPath("$.answerPosition").doesNotExist());
     }
 
     private String bearer(String accessToken) {
@@ -181,5 +211,25 @@ class MvpApiFlowIntegrationTest {
                   }
                 }
                 """;
+    }
+
+    private String problemUpdateRequestJson() {
+        return """
+            {
+              "title": "updated problem title",
+              "description": "updated problem description",
+              "blackStones": [
+                { "x": 5, "y": 5 }
+              ],
+              "whiteStones": [
+                { "x": 6, "y": 6 }
+              ],
+              "nextPlayer": "WHITE",
+              "answerPosition": {
+                "x": 11,
+                "y": 11
+              }
+            }
+            """;
     }
 }

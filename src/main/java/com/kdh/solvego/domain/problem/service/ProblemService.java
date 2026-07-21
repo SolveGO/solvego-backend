@@ -1,5 +1,6 @@
 package com.kdh.solvego.domain.problem.service;
 
+import com.kdh.solvego.domain.problem.exception.ProblemAccessDeniedException;
 import com.kdh.solvego.domain.problem.repository.ProblemRepository;
 import com.kdh.solvego.domain.problem.dto.*;
 import com.kdh.solvego.domain.problem.entity.Problem;
@@ -58,6 +59,29 @@ public class ProblemService {
         Problem problem = problemRepository.findByIdWithCreator(problemId)
                 .orElseThrow(ProblemNotFoundException::new);
         return problemMapper.toDetailResponse(problem);
+    }
+
+    @Transactional
+    public void updateProblem(
+            Long userId,
+            Long problemId,
+            ProblemUpdateRequest request
+    ) {
+        Problem problem = problemRepository.findByIdWithCreator(problemId)
+                .orElseThrow(ProblemNotFoundException::new);
+
+        if (!problem.getCreator().getId().equals(userId)) {
+            throw new ProblemAccessDeniedException();
+        }
+
+        problem.update(
+                request.title(),
+                request.description(),
+                request.blackStones(),
+                request.whiteStones(),
+                request.nextPlayer(),
+                request.answerPosition()
+        );
     }
 
 }

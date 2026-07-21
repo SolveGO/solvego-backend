@@ -4,7 +4,7 @@ const environments = {
         baseUrl: "http://localhost:8080",
     },
     ec2: {
-        baseUrl: "http://3.36.54.41:8080",
+        baseUrl: "http://13.124.250.218:8080",
     },
 };
 

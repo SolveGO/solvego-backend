@@ -19,7 +19,9 @@ import java.nio.charset.StandardCharsets;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -178,6 +180,115 @@ class ProblemControllerIntegrationTest {
                 .andExpect(status().isNotFound());
     }
 
+
+    @Test
+    @DisplayName("문제 작성자는 문제를 수정할 수 있다")
+    void update_problem_success() throws Exception {
+        // given
+        String accessToken = signupAndLogin("updateOwner", "1234");
+        Long problemId = createProblem(accessToken);
+
+        // when & then
+        mockMvc.perform(put("/api/problems/{problemId}", problemId)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(accessToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(problemUpdateRequestJson()))
+                .andExpect(status().isNoContent());
+
+        // 수정 내용이 실제 DB에 반영됐는지 조회 API로 확인
+        mockMvc.perform(get("/api/problems/{problemId}", problemId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.title").value("updated problem title"))
+                .andExpect(jsonPath("$.description").value("updated problem description"))
+                .andExpect(jsonPath("$.nextPlayer").value("WHITE"));
+    }
+
+    @Test
+    @DisplayName("문제 수정 요청값이 올바르지 않으면 400 Bad Request를 반환한다")
+    void update_problem_fails_when_request_is_invalid() throws Exception {
+        // given
+        String accessToken = signupAndLogin("invalidUpdateOwner", "1234");
+        Long problemId = createProblem(accessToken);
+
+        String invalidRequestBody = """
+            {
+              "title": "",
+              "description": "updated problem description",
+              "blackStones": [
+                { "x": 5, "y": 5 }
+              ],
+              "whiteStones": [
+                { "x": 6, "y": 6 }
+              ],
+              "nextPlayer": "WHITE",
+              "answerPosition": {
+                "x": 11,
+                "y": 11
+              }
+            }
+            """;
+
+        // when & then
+        mockMvc.perform(put("/api/problems/{problemId}", problemId)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(accessToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(invalidRequestBody))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("JWT 없이 문제를 수정하면 401 Unauthorized를 반환한다")
+    void update_problem_fails_without_jwt() throws Exception {
+        // given
+        String ownerAccessToken = signupAndLogin("unauthorizedOwner", "1234");
+        Long problemId = createProblem(ownerAccessToken);
+
+        // when & then
+        mockMvc.perform(put("/api/problems/{problemId}", problemId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(problemUpdateRequestJson()))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 문제를 수정하면 404 Not Found를 반환한다")
+    void update_problem_fails_when_problem_not_found() throws Exception {
+        // given
+        String accessToken = signupAndLogin("notFoundUpdateUser", "1234");
+
+        // when & then
+        mockMvc.perform(put("/api/problems/{problemId}", 999999L)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(accessToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(problemUpdateRequestJson()))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("문제 작성자가 아니면 문제를 수정할 수 없다")
+    void update_problem_fails_when_user_is_not_creator() throws Exception {
+        // given
+        String ownerAccessToken = signupAndLogin("problemOwner", "1234");
+        Long problemId = createProblem(ownerAccessToken);
+
+        String otherUserAccessToken = signupAndLogin("otherUser", "1234");
+
+        // when & then
+        mockMvc.perform(put("/api/problems/{problemId}", problemId)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(otherUserAccessToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(problemUpdateRequestJson()))
+                .andExpect(status().isForbidden());
+
+        // 수정되지 않았는지 확인
+        mockMvc.perform(get("/api/problems/{problemId}", problemId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.title").value("problem title"))
+                .andExpect(jsonPath("$.description").value("problem description"))
+                .andExpect(jsonPath("$.nextPlayer").value("BLACK"));
+    }
+
+
     private String signupAndLogin(String username, String password) throws Exception {
         mockMvc.perform(post("/api/users")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -260,4 +371,25 @@ class ProblemControllerIntegrationTest {
                 }
                 """;
     }
+
+    private String problemUpdateRequestJson() {
+        return """
+            {
+              "title": "updated problem title",
+              "description": "updated problem description",
+              "blackStones": [
+                { "x": 5, "y": 5 }
+              ],
+              "whiteStones": [
+                { "x": 6, "y": 6 }
+              ],
+              "nextPlayer": "WHITE",
+              "answerPosition": {
+                "x": 11,
+                "y": 11
+              }
+            }
+            """;
+    }
+
 }

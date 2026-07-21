@@ -1,12 +1,10 @@
 package com.kdh.solvego.domain.problem.service;
 
 import com.kdh.solvego.domain.common.vo.Position;
-import com.kdh.solvego.domain.problem.dto.ProblemCreateRequest;
-import com.kdh.solvego.domain.problem.dto.ProblemCreateResponse;
-import com.kdh.solvego.domain.problem.dto.ProblemDetailResponse;
-import com.kdh.solvego.domain.problem.dto.ProblemListResponse;
+import com.kdh.solvego.domain.problem.dto.*;
 import com.kdh.solvego.domain.problem.entity.PlayerColor;
 import com.kdh.solvego.domain.problem.entity.Problem;
+import com.kdh.solvego.domain.problem.exception.ProblemAccessDeniedException;
 import com.kdh.solvego.domain.problem.exception.ProblemNotFoundException;
 import com.kdh.solvego.domain.problem.repository.ProblemRepository;
 import com.kdh.solvego.domain.user.entity.User;
@@ -173,5 +171,165 @@ class ProblemServiceIntegrationTest {
         // when & then
         assertThatThrownBy(() -> problemService.getProblem(999L))
                 .isInstanceOf(ProblemNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("문제를 수정하면 변경 내용이 DB에 반영된다")
+    void update_problem_success() {
+        // given
+        User creator = userRepository.save(
+                new User("creator", "encoded-password")
+        );
+
+        Problem problem = problemRepository.save(new Problem(
+                "old problem",
+                "old description",
+                List.of(new Position(3, 3)),
+                List.of(new Position(4, 4)),
+                PlayerColor.BLACK,
+                new Position(10, 10),
+                creator
+        ));
+
+        Long problemId = problem.getId();
+
+        ProblemUpdateRequest request = new ProblemUpdateRequest(
+                "updated problem",
+                "updated description",
+                List.of(new Position(5, 5), new Position(6, 6)),
+                List.of(new Position(7, 7)),
+                PlayerColor.WHITE,
+                new Position(11, 11)
+        );
+
+        entityManager.flush();
+        entityManager.clear();
+
+        // when
+        problemService.updateProblem(
+                creator.getId(),
+                problemId,
+                request
+        );
+
+        entityManager.flush();
+        entityManager.clear();
+
+        // then
+        Problem updatedProblem = problemRepository.findById(problemId)
+                .orElseThrow();
+
+        assertThat(updatedProblem.getTitle())
+                .isEqualTo("updated problem");
+
+        assertThat(updatedProblem.getDescription())
+                .isEqualTo("updated description");
+
+        assertThat(updatedProblem.getBlackStones())
+                .containsExactly(
+                        new Position(5, 5),
+                        new Position(6, 6)
+                );
+
+        assertThat(updatedProblem.getWhiteStones())
+                .containsExactly(new Position(7, 7));
+
+        assertThat(updatedProblem.getNextPlayer())
+                .isEqualTo(PlayerColor.WHITE);
+
+        assertThat(updatedProblem.isCorrectPosition(new Position(11, 11)))
+                .isTrue();
+
+        assertThat(updatedProblem.getCreator().getId())
+                .isEqualTo(creator.getId());
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 문제를 수정하면 예외가 발생한다")
+    void update_problem_fails_when_problem_not_found() {
+        // given
+        User creator = userRepository.save(
+                new User("creator", "encoded-password")
+        );
+
+        ProblemUpdateRequest request = new ProblemUpdateRequest(
+                "updated problem",
+                "updated description",
+                List.of(new Position(5, 5)),
+                List.of(new Position(6, 6)),
+                PlayerColor.WHITE,
+                new Position(11, 11)
+        );
+
+        // when & then
+        assertThatThrownBy(
+                () -> problemService.updateProblem(
+                        creator.getId(),
+                        999L,
+                        request
+                )
+        )
+                .isInstanceOf(ProblemNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("문제 작성자가 아니면 문제를 수정할 수 없다")
+    void update_problem_fails_when_user_is_not_creator() {
+        // given
+        User creator = userRepository.save(
+                new User("creator", "encoded-password")
+        );
+
+        User otherUser = userRepository.save(
+                new User("other-user", "encoded-password")
+        );
+
+        Problem problem = problemRepository.save(new Problem(
+                "old problem",
+                "old description",
+                List.of(new Position(3, 3)),
+                List.of(new Position(4, 4)),
+                PlayerColor.BLACK,
+                new Position(10, 10),
+                creator
+        ));
+
+        Long problemId = problem.getId();
+
+        ProblemUpdateRequest request = new ProblemUpdateRequest(
+                "updated problem",
+                "updated description",
+                List.of(new Position(5, 5)),
+                List.of(new Position(6, 6)),
+                PlayerColor.WHITE,
+                new Position(11, 11)
+        );
+
+        entityManager.flush();
+        entityManager.clear();
+
+        // when & then
+        assertThatThrownBy(
+                () -> problemService.updateProblem(
+                        otherUser.getId(),
+                        problemId,
+                        request
+                )
+        )
+                .isInstanceOf(ProblemAccessDeniedException.class);
+
+        entityManager.clear();
+
+        Problem unchangedProblem = problemRepository.findById(problemId)
+                .orElseThrow();
+
+        assertThat(unchangedProblem.getTitle())
+                .isEqualTo("old problem");
+
+        assertThat(unchangedProblem.getDescription())
+                .isEqualTo("old description");
+
+        assertThat(unchangedProblem.getNextPlayer())
+                .isEqualTo(PlayerColor.BLACK);
     }
 }

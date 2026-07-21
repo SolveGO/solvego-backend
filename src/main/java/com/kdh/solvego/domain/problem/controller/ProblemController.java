@@ -115,4 +115,62 @@ public class ProblemController {
         return problemService.getProblem(problemId);
     }
 
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(
+            summary = "문제 수정",
+            description = "인증된 사용자가 자신이 등록한 문제의 전체 내용을 수정합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "204",
+                    description = "문제 수정 성공"
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "잘못된 입력 정보",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "인증되지 않은 사용자",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "문제 수정 권한 없음",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "존재하지 않는 문제",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class)
+                    )
+            )
+    })
+    @PutMapping(
+            value = "/{problemId}",
+            consumes = MediaType.APPLICATION_JSON_VALUE
+    )
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void updateProblem(
+            Authentication authentication,
+            @PathVariable("problemId") Long problemId,
+            @Valid @RequestBody ProblemUpdateRequest request
+    ) {
+        Long userId = (Long) authentication.getPrincipal();
+
+        problemService.updateProblem(userId, problemId, request);
+    }
+
 }
