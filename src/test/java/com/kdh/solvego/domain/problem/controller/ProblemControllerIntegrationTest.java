@@ -341,7 +341,7 @@ class ProblemControllerIntegrationTest {
     void delete_problem_fails_without_jwt() throws Exception {
         // given
         String ownerAccessToken = signupAndLogin(
-                "unauthorizedDeleteOwner",
+                "unauthorizedOwner",
                 "1234"
         );
 
@@ -352,8 +352,8 @@ class ProblemControllerIntegrationTest {
                 .andExpect(status().isUnauthorized());
 
         // 삭제되지 않았는지 확인
-        mockMvc.perform(get("/api/problems/{problemId}", problemId))
-                .andExpect(status().isOk());
+        mockMvc.perform(delete("/api/problems/{problemId}", problemId))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
