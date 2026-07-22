@@ -23,7 +23,6 @@ public interface AttemptRepository extends JpaRepository<Attempt, Long> {
     List<Problem> findWrongProblemsByUserId(@Param("userId") Long userId);
 
     @Modifying(
-            flushAutomatically = true,
             clearAutomatically = true
     )
     @Query("""
