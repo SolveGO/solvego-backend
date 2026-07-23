@@ -11,6 +11,15 @@ jobs:
     runs-on: ubuntu-latest
 
     services:
+      redis:
+        image: redis:7.4-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=10
       mysql:
         image: mysql:8.0
         env:
@@ -29,6 +38,8 @@ jobs:
       TEST_DB_URL: jdbc:mysql://127.0.0.1:3306/solvego_test
       TEST_DB_USERNAME: root
       TEST_DB_PASSWORD: root_password
+      REDIS_HOST: 127.0.0.1
+      REDIS_PORT: 6379
 
     steps:
       - name: Checkout source code

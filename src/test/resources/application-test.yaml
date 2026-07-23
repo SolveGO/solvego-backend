@@ -1,9 +1,11 @@
 spring:
+  cache:
+    type: none
+
   datasource:
     url: ${TEST_DB_URL:jdbc:mysql://localhost:3306/solvego_test}
     username: ${TEST_DB_USERNAME:root}
     password: ${TEST_DB_PASSWORD:root_password}
-
 
   jpa:
     hibernate:
