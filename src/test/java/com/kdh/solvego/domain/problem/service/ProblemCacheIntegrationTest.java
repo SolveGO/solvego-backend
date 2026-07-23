@@ -37,7 +37,9 @@ import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-@SpringBootTest
+@SpringBootTest(
+        properties = "spring.cache.type=redis"
+)
 @ActiveProfiles("test")
 @Testcontainers
 class ProblemCacheIntegrationTest {
