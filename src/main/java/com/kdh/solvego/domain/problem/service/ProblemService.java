@@ -10,6 +10,8 @@ import com.kdh.solvego.domain.problem.mapper.ProblemMapper;
 import com.kdh.solvego.domain.user.entity.User;
 import com.kdh.solvego.domain.user.repository.UserRepository;
 import com.kdh.solvego.domain.user.exception.UserNotFoundException;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -39,6 +41,11 @@ public class ProblemService {
         return problemMapper.toListResponse(problems);
     }
 
+    @Cacheable(
+            cacheNames = "problemPages",
+            key = "'page:' + #page + ':size:' + #size",
+            condition = "#page >= 0 && #page <= 2 && #size == 20"
+    )
     @Transactional(readOnly = true)
     public ProblemPageResponse getProblems(int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
@@ -49,6 +56,10 @@ public class ProblemService {
         return problemMapper.toPageResponse(problemPage);
     }
 
+    @CacheEvict(
+            cacheNames = "problemPages",
+            allEntries = true
+    )
     @Transactional
     public ProblemCreateResponse createProblem(Long userId, ProblemCreateRequest request) {
         User creator=userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
@@ -64,6 +75,10 @@ public class ProblemService {
         return problemMapper.toDetailResponse(problem);
     }
 
+    @CacheEvict(
+            cacheNames = "problemPages",
+            allEntries = true
+    )
     @Transactional
     public void updateProblem(
             Long userId,
@@ -87,6 +102,10 @@ public class ProblemService {
         );
     }
 
+    @CacheEvict(
+            cacheNames = "problemPages",
+            allEntries = true
+    )
     @Transactional
     public void deleteProblem(Long userId, Long problemId) {
         Problem problem = problemRepository.findByIdWithCreator(problemId)
