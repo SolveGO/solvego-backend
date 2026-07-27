@@ -229,31 +229,30 @@ Flyway 마이그레이션을 통해 `created_at` 인덱스를 제거했습니다
 이를 해결하기 위해 Spring Data JPA의 `Pageable`과 `Page`를 이용한
 Offset 기반 페이지네이션을 적용했습니다.
 
+<p align="center">
+  <img src="docs/images/pagination-performance.png"
+       width="1000"
+       alt="Legacy API vs Paginated API">
+</p>
+
+
 ```http
 GET /api/problems?page=0&size=20
 ```
 
 응답에는 문제 목록과 함께 현재 페이지 및 전체 페이지 정보를 제공합니다.
 
-```json
-{
-  "problems": [],
-  "page": 0,
-  "size": 20,
-  "totalElements": 10001,
-  "totalPages": 501
-}
-```
+k6 부하 테스트 결과,
+페이지네이션 적용 후 응답 크기가 약 **404배 감소**했으며,
+평균 응답 시간과 p95 지연 시간이 크게 감소했습니다.
 
-최신순 정렬에는 앞서 결정한 `id DESC`를 사용했습니다.
-
-현재 서비스는 특정 페이지로 직접 이동할 수 있고 전체 문제 수가 필요한 구조이므로
-Offset 방식을 선택했습니다. 데이터가 훨씬 커지거나 무한 스크롤 형태로 변경될 경우에는
-Cursor 기반 페이지네이션을 검토할 수 있습니다.
+응답 데이터 크기가 일정하게 유지되면서
+동시 요청이 증가해도 처리량(RPS)이 안정적으로 증가하는 것을 확인할 수 있었습니다.
 
 ### 관련 기록
 
 - [페이지네이션 API 구현과 성능 검증](https://forwarder1121.tistory.com/46)
+
 
 
 
@@ -278,7 +277,6 @@ Cache-Aside 방식의 캐시를 적용했습니다.
 - 페이지 크기가 20인 경우
 - 캐시 TTL은 10분
 
-
 ```text
 problemPages::page:0:size:20
 problemPages::page:1:size:20
@@ -288,23 +286,10 @@ problemPages::page:2:size:20
 조회가 가장 집중되는 최신 페이지(0~2)만 캐싱하여
 메모리 사용량과 캐시 효율 사이의 균형을 선택했습니다.
 
-문제가 등록·수정·삭제되면 최신 문제 목록의 내용과 페이지 경계가 변경될 수 있으므로,
+문제가 등록,수정,삭제되면 최신 문제 목록의 내용과 페이지 경계가 변경될 수 있으므로,
 문제 목록 캐시를 무효화하도록 구성했습니다.
 
-또한 Testcontainers로 `redis:7.4-alpine` 컨테이너를 실행하는 통합 테스트를 작성하여
-다음 동작을 검증했습니다.
-
-- 같은 페이지 재조회 시 Repository가 한 번만 호출되는지
-- Cache Miss 이후 실제 Redis 키가 생성되는지
-- 페이지별로 서로 다른 캐시 키가 생성되는지
-- 0~2페이지만 캐싱되는지
-- 페이지 크기가 20이 아닐 때 캐싱되지 않는지
-- Redis 키에 TTL이 설정되는지
-- 문제 수정과 삭제 시 캐시가 제거되는지
-
-실제 테스트는 `@Testcontainers`, `@Container`, `GenericContainer`,
-`@DynamicPropertySource`를 사용해 Redis 컨테이너의 동적 포트를 Spring에 주입하는 방식으로 구성했습니다. 
-
+또한 Testcontainers로 `redis:7.4-alpine` 컨테이너를 실행하는 통합 테스트를 작성하여 동작을 검증했습니다.
 
 
 ### k6 부하 테스트
@@ -331,17 +316,12 @@ EC2의 애플리케이션 컨테이너를 다시 생성한 후 k6 결과를 회�
 
 대표적으로 20 VU가 30초 동안 다음 API를 반복 호출하도록 측정했습니다.
 
-```http
-GET /api/problems?page=0&size=20
-```
-
-| 지표 | Cache OFF | Cache ON |
-|---|---:|---:|
-| 평균 응답 시간 | 166.18ms | 24.32ms |
-| 중앙값 | 148.54ms | 20.32ms |
-| p95 응답 시간 | 296.71ms | 49.92ms |
-| 처리량 | 120.01 req/s | 814.04 req/s |
-| 요청 실패율 | 0% | 0% |
+<p align="center">
+  <img
+    src="docs/images/cache-performance-comparison.png"
+    alt="Cache OFF vs Cache ON Performance Comparison"
+    width="1000">
+</p>
 
 해당 회차에서 Redis 적용 후 평균 응답 시간은 약 85% 감소했고,
 p95 응답 시간은 약 83% 감소했습니다.
