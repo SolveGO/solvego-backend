@@ -15,11 +15,13 @@ import org.springframework.test.web.servlet.MvcResult;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.*;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -32,32 +34,31 @@ class UserControllerConcurrencyTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
-    private String raceUsername;
+    private static final String RACE_USERNAME = "concurrent-user";
 
     @AfterEach
     void tearDown() {
-        if (raceUsername != null) {
-            jdbcTemplate.update(
-                    "delete from users where username = ?",
-                    raceUsername
-            );
-        }
+        jdbcTemplate.update(
+                "delete from users where username = ?",
+                RACE_USERNAME
+        );
     }
 
-    @Disabled("동시 회원가입 race condition 트러블슈팅 단계에서 처리 예정")
     @Test
     @DisplayName("동시에 같은 username으로 회원가입해도 하나의 사용자만 생성된다")
-    void concurrent_signup_with_same_username_creates_only_one_user() throws Exception {
+    void concurrentSignupWithSameUsernameCreatesOnlyOneUser() throws Exception {
         // given
         int threadCount = 10;
-
-        raceUsername = "race" + System.nanoTime() % 1_000_000_000;
         String password = "1234";
 
-        ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
+        ExecutorService executorService =
+                Executors.newFixedThreadPool(threadCount);
 
-        CountDownLatch readyLatch = new CountDownLatch(threadCount);
-        CountDownLatch startLatch = new CountDownLatch(1);
+        CountDownLatch readyLatch =
+                new CountDownLatch(threadCount);
+
+        CountDownLatch startLatch =
+                new CountDownLatch(1);
 
         List<Future<Integer>> futures = new ArrayList<>();
 
@@ -67,9 +68,14 @@ class UserControllerConcurrencyTest {
                     readyLatch.countDown();
                     startLatch.await();
 
-                    MvcResult result = mockMvc.perform(post("/api/users")
-                                    .contentType(MediaType.APPLICATION_JSON)
-                                    .content(signupRequestJson(raceUsername, password)))
+                    MvcResult result = mockMvc.perform(
+                                    post("/api/users")
+                                            .contentType(MediaType.APPLICATION_JSON)
+                                            .content(signupRequestJson(
+                                                    RACE_USERNAME,
+                                                    password
+                                            ))
+                            )
                             .andReturn();
 
                     return result.getResponse().getStatus();
@@ -95,7 +101,7 @@ class UserControllerConcurrencyTest {
             Integer savedUserCount = jdbcTemplate.queryForObject(
                     "select count(*) from users where username = ?",
                     Integer.class,
-                    raceUsername
+                    RACE_USERNAME
             );
 
             assertThat(savedUserCount).isEqualTo(1);
@@ -104,7 +110,10 @@ class UserControllerConcurrencyTest {
         }
     }
 
-    private String signupRequestJson(String username, String password) {
+    private String signupRequestJson(
+            String username,
+            String password
+    ) {
         return """
                 {
                   "username": "%s",
