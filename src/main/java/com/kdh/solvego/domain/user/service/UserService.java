@@ -6,6 +6,7 @@ import com.kdh.solvego.domain.user.entity.User;
 import com.kdh.solvego.domain.user.exception.DuplicateUsernameException;
 import com.kdh.solvego.domain.user.repository.UserRepository;
 import jakarta.transaction.Transactional;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -31,8 +32,11 @@ public class UserService {
                 encodedPassword
         );
 
-        User savedUser = userRepository.save(user);
-
-        return new SignupResponse(savedUser.getId());
+        try {
+            User savedUser = userRepository.save(user);
+            return new SignupResponse(savedUser.getId());
+        } catch (DataIntegrityViolationException e) {
+            throw new DuplicateUsernameException();
+        }
     }
 }
