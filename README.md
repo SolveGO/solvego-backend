@@ -199,6 +199,8 @@ GitHub Actions를 이용해 `main` 브랜치에 merge된 코드를 자동으로 
  각 변경 사항은 `EXPLAIN ANALYZE`, 반복 실행 시간 측정, k6 부하 테스트,
 Prometheus와 Grafana 모니터링을 통해 실제 효과를 확인했습니다.
 
+---
+
 ### 문제 목록 조회 인덱스 최적화
 
 초기 문제 목록 API는 최신 문제를 조회하기 위해 다음과 같이
@@ -243,6 +245,7 @@ Flyway 마이그레이션을 통해 `created_at` 인덱스를 제거했습니다
 - [DB 인덱스 도입](https://forwarder1121.tistory.com/44)
 - [DB 인덱스 제거](https://forwarder1121.tistory.com/45)
 
+---
 
 ### 페이지네이션 적용
 
@@ -279,7 +282,7 @@ k6 부하 테스트 결과,
 - [페이지네이션 API 구현과 성능 검증](https://forwarder1121.tistory.com/46)
 
 
-
+---
 
 ### Redis 캐시 적용
 
@@ -312,6 +315,7 @@ problemPages::page:2:size:20
 문제가 등록,수정,삭제되면 최신 문제 목록의 내용과 페이지 경계가 변경될 수 있으므로, 해당 연산이 발생될 경우
 문제 목록 캐시를 무효화하도록 했습니다. 이는 Testcontainers로 redis 컨테이너를 실행하는 통합 테스트를 작성하여 동작을 검증했습니다.
 
+---
 
 ### k6 부하 테스트
 
@@ -356,6 +360,8 @@ Cache ON의 936.24 req/s로 증가하여 약 7.14배 향상되었습니다.
 
 ### 관련 기록
 - [Redis 도입과 성능 검증](https://forwarder1121.tistory.com/48)
+
+---
 
 ### Prometheus와 Grafana 모니터링
 
@@ -453,6 +459,8 @@ username varchar(50) not null unique
 
 - [회원가입 Race Condition 트러블슈팅](https://forwarder1121.tistory.com/49)
 
+---
+
 ### JPA 벌크 쿼리 이후 영속성 컨텍스트 불일치
 
 문제 삭제 API에서 해당 문제를 참조하는 풀이 기록을 먼저 삭제한 뒤,
@@ -520,7 +528,7 @@ void deleteAllByProblemId(Long problemId);
 
 * [JPA 벌크 쿼리의 영속성 컨텍스트 불일치 해결](https://forwarder1121.tistory.com/47)
 
-
+---
 
 ### Validation 실패가 `400`이 아닌 `401`로 반환되는 문제
 
@@ -549,6 +557,8 @@ JWT 필터는 `ERROR dispatch`에서 다시 실행되지 않아 인증되지 않
 ### 관련 기록
 - [ERROR Dispatch 트러블슈팅 상세 기록](https://forwarder1121.tistory.com/32)
 
+---
+
 ### 문제 목록 조회의 N+1 문제
 
 <p align="center">
@@ -575,6 +585,7 @@ List<Problem> findAllWithCreatorOrderByCreatedAtDesc();
 
 ### 관련 기록
 - [N+1 문제 해결 상세 기록](https://forwarder1121.tistory.com/33)
+
 
 
 ---
