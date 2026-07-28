@@ -12,7 +12,18 @@
 [개발 블로그](https://forwarder1121.tistory.com/category/Project/SolveGO)
 
 
-목차는 아래와 같으며, 모든 내용에 대한 상세한 설명은 [개발 블로그](https://forwarder1121.tistory.com/category/Project/SolveGO)에서 확인하실 수 있습니다.
+
+
+## 프로젝트 소개
+
+
+사용자가 바둑 사활 문제를 등록하고, 다른 사용자가 등록한 문제를 풀어볼 수 있는 플랫폼입니다.
+
+개인 프로젝트로 [기획](https://forwarder1121.tistory.com/24),
+[요구사항 정의](https://forwarder1121.tistory.com/25),
+[API 설계](https://forwarder1121.tistory.com/26),
+구현, 테스트, 문서화, 배포, 성능 개선/측정 전 과정을 혼자서 진행했고, 
+이 과정에서 내린 주요 의사결정과 문제 해결 과정은 [블로그](https://forwarder1121.tistory.com/category/Project/SolveGO)에서 확인하실 수 있습니다.
 
 ## 목차
 
@@ -40,18 +51,6 @@
 - [프로젝트 구조](#프로젝트-구조)
 
 ---
-
-## 프로젝트 소개
-
-
-사용자가 바둑 사활 문제를 등록하고, 다른 사용자가 등록한 문제를 풀어볼 수 있는 플랫폼입니다.
-
-개인 프로젝트로 [기획](https://forwarder1121.tistory.com/24),
-[요구사항 정의](https://forwarder1121.tistory.com/25),
-[API 설계](https://forwarder1121.tistory.com/26),
-구현, 테스트, 문서화, 배포, 성능 개선/측정 전 과정을 혼자서 진행했고, 
-이 과정에서 내린 주요 의사결정과 문제 해결 과정은 [블로그](https://forwarder1121.tistory.com/category/Project/SolveGO)에 상세하게 기록되어 있습니다.
-
 
 ## 주요 기능
 
