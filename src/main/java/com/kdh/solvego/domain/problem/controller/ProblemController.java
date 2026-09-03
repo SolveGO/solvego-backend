@@ -218,5 +218,49 @@ public class ProblemController {
 
         problemService.deleteProblem(userId, problemId);
     }
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(
+            summary = "문제 수정 정보 조회",
+            description = "인증된 사용자가 자신이 등록한 문제의 수정에 필요한 전체 정보를 조회합니다. 정답 좌표를 포함합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "문제 수정 정보 조회 성공"
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "인증되지 않은 사용자",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "문제 수정 권한 없음",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "존재하지 않는 문제",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class)
+                    )
+            )
+    })
+    @GetMapping("/{problemId}/edit")
+    public ProblemEditResponse getProblemForEdit(
+            Authentication authentication,
+            @PathVariable("problemId") Long problemId
+    ) {
+        Long userId = (Long) authentication.getPrincipal();
+
+        return problemService.getProblemForEdit(userId, problemId);
+    }
 
 }

@@ -388,6 +388,92 @@ class ProblemServiceTest {
         verify(problemRepository, never()).deleteById(anyLong());
         verifyNoInteractions(userRepository, problemMapper);
     }
+    @Test
+    @DisplayName("문제 작성자는 수정용 문제 정보를 조회할 수 있다")
+    void get_problem_for_edit_success() {
+        // given
+        Long userId = 1L;
+        Long problemId = 10L;
+
+        User creator = new User("creator", "encoded-password");
+        ReflectionTestUtils.setField(creator, "id", userId);
+
+        Problem problem = createProblem(creator, "problem");
+        ReflectionTestUtils.setField(problem, "id", problemId);
+
+        ProblemEditResponse expectedResponse = new ProblemEditResponse(
+                problemId,
+                "problem",
+                "description",
+                List.of(new Position(3, 3)),
+                List.of(new Position(4, 4)),
+                PlayerColor.BLACK,
+                new Position(10, 10)
+        );
+
+        when(problemRepository.findByIdWithCreator(problemId))
+                .thenReturn(Optional.of(problem));
+
+        when(problemMapper.toEditResponse(problem))
+                .thenReturn(expectedResponse);
+
+        // when
+        ProblemEditResponse response =
+                problemService.getProblemForEdit(userId, problemId);
+
+        // then
+        assertThat(response).isEqualTo(expectedResponse);
+
+        verify(problemRepository).findByIdWithCreator(problemId);
+        verify(problemMapper).toEditResponse(problem);
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 문제의 수정 정보를 조회하면 예외가 발생한다")
+    void get_problem_for_edit_fails_when_problem_not_found() {
+        // given
+        Long userId = 1L;
+        Long problemId = 999L;
+
+        when(problemRepository.findByIdWithCreator(problemId))
+                .thenReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(
+                () -> problemService.getProblemForEdit(userId, problemId)
+        )
+                .isInstanceOf(ProblemNotFoundException.class);
+
+        verify(problemRepository).findByIdWithCreator(problemId);
+        verifyNoInteractions(problemMapper);
+    }
+
+    @Test
+    @DisplayName("문제 작성자가 아니면 수정용 문제 정보를 조회할 수 없다")
+    void get_problem_for_edit_fails_when_user_is_not_creator() {
+        // given
+        Long creatorId = 1L;
+        Long otherUserId = 2L;
+        Long problemId = 10L;
+
+        User creator = new User("creator", "encoded-password");
+        ReflectionTestUtils.setField(creator, "id", creatorId);
+
+        Problem problem = createProblem(creator, "problem");
+        ReflectionTestUtils.setField(problem, "id", problemId);
+
+        when(problemRepository.findByIdWithCreator(problemId))
+                .thenReturn(Optional.of(problem));
+
+        // when & then
+        assertThatThrownBy(
+                () -> problemService.getProblemForEdit(otherUserId, problemId)
+        )
+                .isInstanceOf(ProblemOwnershipException.class);
+
+        verify(problemRepository).findByIdWithCreator(problemId);
+        verify(problemMapper, never()).toEditResponse(any(Problem.class));
+    }
 
     private ProblemCreateRequest createProblemCreateRequest() {
         return new ProblemCreateRequest(

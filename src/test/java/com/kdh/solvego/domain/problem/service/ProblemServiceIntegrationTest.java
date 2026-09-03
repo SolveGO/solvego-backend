@@ -440,4 +440,84 @@ class ProblemServiceIntegrationTest {
         )
                 .isInstanceOf(ProblemNotFoundException.class);
     }
+
+    @Test
+    @DisplayName("문제 작성자는 정답 좌표가 포함된 수정용 문제 정보를 조회할 수 있다")
+    void get_problem_for_edit_success() {
+        // given
+        User creator = userRepository.save(
+                new User("creator", "encoded-password")
+        );
+
+        Problem problem = problemRepository.save(new Problem(
+                "problem",
+                "description",
+                List.of(new Position(3, 3)),
+                List.of(new Position(4, 4)),
+                PlayerColor.BLACK,
+                new Position(10, 10),
+                creator
+        ));
+
+        Long problemId = problem.getId();
+
+        entityManager.flush();
+        entityManager.clear();
+
+        // when
+        ProblemEditResponse response =
+                problemService.getProblemForEdit(
+                        creator.getId(),
+                        problemId
+                );
+
+        // then
+        assertThat(response.problemId()).isEqualTo(problemId);
+        assertThat(response.title()).isEqualTo("problem");
+        assertThat(response.description()).isEqualTo("description");
+        assertThat(response.blackStones())
+                .containsExactly(new Position(3, 3));
+        assertThat(response.whiteStones())
+                .containsExactly(new Position(4, 4));
+        assertThat(response.nextPlayer())
+                .isEqualTo(PlayerColor.BLACK);
+        assertThat(response.answerPosition())
+                .isEqualTo(new Position(10, 10));
+    }
+    @Test
+    @DisplayName("문제 작성자가 아니면 수정용 문제 정보를 조회할 수 없다")
+    void get_problem_for_edit_fails_when_user_is_not_creator() {
+        // given
+        User creator = userRepository.save(
+                new User("creator", "encoded-password")
+        );
+
+        User otherUser = userRepository.save(
+                new User("other-user", "encoded-password")
+        );
+
+        Problem problem = problemRepository.save(new Problem(
+                "problem",
+                "description",
+                List.of(new Position(3, 3)),
+                List.of(new Position(4, 4)),
+                PlayerColor.BLACK,
+                new Position(10, 10),
+                creator
+        ));
+
+        Long problemId = problem.getId();
+
+        entityManager.flush();
+        entityManager.clear();
+
+        // when & then
+        assertThatThrownBy(
+                () -> problemService.getProblemForEdit(
+                        otherUser.getId(),
+                        problemId
+                )
+        )
+                .isInstanceOf(ProblemOwnershipException.class);
+    }
 }

@@ -433,4 +433,63 @@ class ProblemControllerTest {
         verify(problemService).deleteProblem(userId, problemId);
     }
 
+    @Test
+    @DisplayName("문제 작성자는 수정용 문제 정보를 조회할 수 있다")
+    void get_problem_for_edit_success() throws Exception {
+        // given
+        Long userId = 1L;
+        Long problemId = 10L;
+
+        Authentication authentication =
+                new UsernamePasswordAuthenticationToken(userId, null, List.of());
+
+        // when & then
+        mockMvc.perform(get("/api/problems/{problemId}/edit", problemId)
+                        .principal(authentication))
+                .andExpect(status().isOk());
+
+        verify(problemService).getProblemForEdit(userId, problemId);
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 문제의 수정 정보를 조회하면 404 Not Found를 반환한다")
+    void get_problem_for_edit_fails_when_problem_not_found() throws Exception {
+        // given
+        Long userId = 1L;
+        Long problemId = 999L;
+
+        Authentication authentication =
+                new UsernamePasswordAuthenticationToken(userId, null, List.of());
+
+        when(problemService.getProblemForEdit(userId, problemId))
+                .thenThrow(new ProblemNotFoundException());
+
+        // when & then
+        mockMvc.perform(get("/api/problems/{problemId}/edit", problemId)
+                        .principal(authentication))
+                .andExpect(status().isNotFound());
+
+        verify(problemService).getProblemForEdit(userId, problemId);
+    }
+
+    @Test
+    @DisplayName("문제 작성자가 아니면 수정용 문제 정보를 조회할 수 없다")
+    void get_problem_for_edit_fails_when_user_is_not_creator() throws Exception {
+        // given
+        Long userId = 2L;
+        Long problemId = 10L;
+
+        Authentication authentication =
+                new UsernamePasswordAuthenticationToken(userId, null, List.of());
+
+        when(problemService.getProblemForEdit(userId, problemId))
+                .thenThrow(new ProblemOwnershipException());
+
+        // when & then
+        mockMvc.perform(get("/api/problems/{problemId}/edit", problemId)
+                        .principal(authentication))
+                .andExpect(status().isForbidden());
+
+        verify(problemService).getProblemForEdit(userId, problemId);
+    }
 }
