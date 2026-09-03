@@ -370,6 +370,78 @@ class ProblemControllerIntegrationTest {
                         .header(HttpHeaders.AUTHORIZATION, bearer(accessToken)))
                 .andExpect(status().isNotFound());
     }
+    @Test
+    @DisplayName("문제 작성자는 수정용 문제 정보를 조회할 수 있다")
+    void get_problem_for_edit_success() throws Exception {
+        // given
+        String accessToken = signupAndLogin("editInfoOwner", "1234");
+        Long problemId = createProblem(accessToken);
+
+        // when & then
+        mockMvc.perform(get("/api/problems/{problemId}/edit", problemId)
+                        .header(
+                                HttpHeaders.AUTHORIZATION,
+                                bearer(accessToken)
+                        ))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.problemId").value(problemId))
+                .andExpect(jsonPath("$.title").value("problem title"))
+                .andExpect(jsonPath("$.description").value("problem description"))
+                .andExpect(jsonPath("$.nextPlayer").value("BLACK"))
+                .andExpect(jsonPath("$.answerPosition.x").value(10))
+                .andExpect(jsonPath("$.answerPosition.y").value(10));
+    }
+
+    @Test
+    @DisplayName("문제 작성자가 아니면 수정용 문제 정보를 조회할 수 없다")
+    void get_problem_for_edit_fails_when_user_is_not_creator() throws Exception {
+        // given
+        String ownerAccessToken =
+                signupAndLogin("editInfoOwner2", "1234");
+
+        Long problemId = createProblem(ownerAccessToken);
+
+        String otherUserAccessToken =
+                signupAndLogin("editInfoOtherUser", "1234");
+
+        // when & then
+        mockMvc.perform(get("/api/problems/{problemId}/edit", problemId)
+                        .header(
+                                HttpHeaders.AUTHORIZATION,
+                                bearer(otherUserAccessToken)
+                        ))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("JWT 없이 수정용 문제 정보를 조회하면 401 Unauthorized를 반환한다")
+    void get_problem_for_edit_fails_without_jwt() throws Exception {
+        // given
+        String ownerAccessToken =
+                signupAndLogin("editNoJwtOwner", "1234");
+
+        Long problemId = createProblem(ownerAccessToken);
+
+        // when & then
+        mockMvc.perform(get("/api/problems/{problemId}/edit", problemId))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 문제의 수정 정보를 조회하면 404 Not Found를 반환한다")
+    void get_problem_for_edit_fails_when_problem_not_found() throws Exception {
+        // given
+        String accessToken =
+                signupAndLogin("editInfoNotFoundUser", "1234");
+
+        // when & then
+        mockMvc.perform(get("/api/problems/{problemId}/edit", 999999L)
+                        .header(
+                                HttpHeaders.AUTHORIZATION,
+                                bearer(accessToken)
+                        ))
+                .andExpect(status().isNotFound());
+    }
 
 
     private String signupAndLogin(String username, String password) throws Exception {

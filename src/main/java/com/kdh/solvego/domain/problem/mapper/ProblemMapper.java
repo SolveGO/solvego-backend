@@ -76,4 +76,16 @@ public class ProblemMapper {
                 problem.getTitle()
         );
     }
+
+    public ProblemEditResponse toEditResponse(Problem problem) {
+        return new ProblemEditResponse(
+                problem.getId(),
+                problem.getTitle(),
+                problem.getDescription(),
+                problem.getBlackStones(),
+                problem.getWhiteStones(),
+                problem.getNextPlayer(),
+                problem.getAnswerPosition()
+        );
+    }
 }

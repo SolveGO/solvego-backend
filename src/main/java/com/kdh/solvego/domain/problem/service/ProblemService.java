@@ -119,4 +119,19 @@ public class ProblemService {
         problemRepository.deleteById(problemId);
     }
 
+    @Transactional(readOnly = true)
+    public ProblemEditResponse getProblemForEdit(
+            Long userId,
+            Long problemId
+    ) {
+        Problem problem = problemRepository.findByIdWithCreator(problemId)
+                .orElseThrow(ProblemNotFoundException::new);
+
+        if (!problem.getCreator().getId().equals(userId)) {
+            throw new ProblemOwnershipException();
+        }
+
+        return problemMapper.toEditResponse(problem);
+    }
+
 }
