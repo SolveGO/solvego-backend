@@ -12,11 +12,18 @@
 [개발 블로그](https://forwarder1121.tistory.com/category/Project/SolveGO)
 
 
-목차는 아래와 같으며, 모든 내용에 대한 상세한 설명은 [개발 블로그](https://forwarder1121.tistory.com/category/Project/SolveGO)에서 확인하실 수 있습니다.
+
+
+사용자가 바둑 사활 문제를 등록하고, 다른 사용자가 등록한 문제를 풀어볼 수 있는 플랫폼입니다.
+
+개인 프로젝트로 [기획](https://forwarder1121.tistory.com/24),
+[요구사항 정의](https://forwarder1121.tistory.com/25),
+[API 설계](https://forwarder1121.tistory.com/26),
+구현, 테스트, 문서화, 배포, 성능 개선/측정 모든 과정을 혼자서 진행했고, 
+이 과정에서 내린 주요 의사결정과 문제 해결 과정은 [블로그](https://forwarder1121.tistory.com/category/Project/SolveGO)에서 확인하실 수 있습니다.
 
 ## 목차
 
-- [프로젝트 소개](#프로젝트-소개)
 - [주요 기능](#주요-기능)
 - [기술 스택](#기술-스택)
 - [애플리케이션 아키텍처](#애플리케이션-아키텍처)
@@ -40,18 +47,6 @@
 - [프로젝트 구조](#프로젝트-구조)
 
 ---
-
-## 프로젝트 소개
-
-
-사용자가 바둑 사활 문제를 등록하고, 다른 사용자가 등록한 문제를 풀어볼 수 있는 플랫폼입니다.
-
-개인 프로젝트로 [기획](https://forwarder1121.tistory.com/24),
-[요구사항 정의](https://forwarder1121.tistory.com/25),
-[API 설계](https://forwarder1121.tistory.com/26),
-구현, 테스트, 문서화, 배포, 성능 개선/측정 전 과정을 혼자서 진행했고, 
-이 과정에서 내린 주요 의사결정과 문제 해결 과정은 [블로그](https://forwarder1121.tistory.com/category/Project/SolveGO)에 상세하게 기록되어 있습니다.
-
 
 ## 주요 기능
 
@@ -204,6 +199,8 @@ GitHub Actions를 이용해 `main` 브랜치에 merge된 코드를 자동으로 
  각 변경 사항은 `EXPLAIN ANALYZE`, 반복 실행 시간 측정, k6 부하 테스트,
 Prometheus와 Grafana 모니터링을 통해 실제 효과를 확인했습니다.
 
+---
+
 ### 문제 목록 조회 인덱스 최적화
 
 초기 문제 목록 API는 최신 문제를 조회하기 위해 다음과 같이
@@ -248,6 +245,7 @@ Flyway 마이그레이션을 통해 `created_at` 인덱스를 제거했습니다
 - [DB 인덱스 도입](https://forwarder1121.tistory.com/44)
 - [DB 인덱스 제거](https://forwarder1121.tistory.com/45)
 
+---
 
 ### 페이지네이션 적용
 
@@ -284,7 +282,7 @@ k6 부하 테스트 결과,
 - [페이지네이션 API 구현과 성능 검증](https://forwarder1121.tistory.com/46)
 
 
-
+---
 
 ### Redis 캐시 적용
 
@@ -317,6 +315,7 @@ problemPages::page:2:size:20
 문제가 등록,수정,삭제되면 최신 문제 목록의 내용과 페이지 경계가 변경될 수 있으므로, 해당 연산이 발생될 경우
 문제 목록 캐시를 무효화하도록 했습니다. 이는 Testcontainers로 redis 컨테이너를 실행하는 통합 테스트를 작성하여 동작을 검증했습니다.
 
+---
 
 ### k6 부하 테스트
 
@@ -361,6 +360,8 @@ Cache ON의 936.24 req/s로 증가하여 약 7.14배 향상되었습니다.
 
 ### 관련 기록
 - [Redis 도입과 성능 검증](https://forwarder1121.tistory.com/48)
+
+---
 
 ### Prometheus와 Grafana 모니터링
 
@@ -434,9 +435,9 @@ userRepository.save(user);
   <img src="docs/images/lock-scope-comparison.png" width="900">
 </p>
 
-- **JVM Lock**은 하나의 애플리케이션 인스턴스 내부에서만 동작하므로, 서버가 여러 대인 환경에서는 다른 인스턴스의 요청을 제어할 수 없습니다.
-- **Redis 분산 락**은 여러 서버에 걸친 요청까지 제어할 수 있지만, 현재 요구사항은 **단일 서버**에서만 무결성을 보장하는 것이므로 운영 복잡도에 비해 얻는 이점이 크지 않았습니다.
-- **DB UNIQUE 제약조건(락)**은 username의 유일성을 데이터베이스 자체에서 보장할 수 있으며, 서버가 몇 대로 확장되더라도 동일한 방식으로 동작하나, 많은 요청이 존재하는 경우 DB conntection을 낭비할 수 있었습니다.
+- **JVM Lock** 은 하나의 애플리케이션 인스턴스 내부에서만 동작하므로, 서버가 여러 대인 환경에서는 다른 인스턴스의 요청을 제어할 수 없습니다.
+- **Redis 분산 락** 은 여러 서버에 걸친 요청까지 제어할 수 있지만, 현재 요구사항은 **단일 서버**에서만 무결성을 보장하는 것이므로 운영 복잡도에 비해 얻는 이점이 크지 않았습니다.
+- **DB UNIQUE 제약조건(락)** 은 username의 유일성을 데이터베이스 자체에서 보장할 수 있으며, 서버가 몇 대로 확장되더라도 동일한 방식으로 동작하나, 많은 요청이 존재하는 경우 DB conntection을 낭비할 수 있었습니다.
 
 현재 서버의 운영 방식이 단일 인스턴스이고, 회원가입 요청은 많은 요청이 예상되지 않으므로, DB UNIQUE 제약조건(락)을 선택하였습니다.
 
@@ -457,6 +458,8 @@ username varchar(50) not null unique
 ### 관련 기록
 
 - [회원가입 Race Condition 트러블슈팅](https://forwarder1121.tistory.com/49)
+
+---
 
 ### JPA 벌크 쿼리 이후 영속성 컨텍스트 불일치
 
@@ -525,7 +528,7 @@ void deleteAllByProblemId(Long problemId);
 
 * [JPA 벌크 쿼리의 영속성 컨텍스트 불일치 해결](https://forwarder1121.tistory.com/47)
 
-
+---
 
 ### Validation 실패가 `400`이 아닌 `401`로 반환되는 문제
 
@@ -554,6 +557,8 @@ JWT 필터는 `ERROR dispatch`에서 다시 실행되지 않아 인증되지 않
 ### 관련 기록
 - [ERROR Dispatch 트러블슈팅 상세 기록](https://forwarder1121.tistory.com/32)
 
+---
+
 ### 문제 목록 조회의 N+1 문제
 
 <p align="center">
@@ -580,6 +585,7 @@ List<Problem> findAllWithCreatorOrderByCreatedAtDesc();
 
 ### 관련 기록
 - [N+1 문제 해결 상세 기록](https://forwarder1121.tistory.com/33)
+
 
 
 ---
