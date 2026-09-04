@@ -36,8 +36,22 @@ public class ProblemService {
     }
 
     @Transactional(readOnly = true)
-    public ProblemListResponse getProblems(){
-        List<Problem> problems = problemRepository.findAllWithCreatorOrderByIdDesc();
+    public ProblemDetailResponse getProblem(Long userId, Long problemId) {
+        Problem problem = problemRepository.findByIdWithCreator(problemId)
+                .orElseThrow(ProblemNotFoundException::new);
+
+        boolean editable =
+                userId != null &&
+                        problem.getCreator().getId().equals(userId);
+
+        return problemMapper.toDetailResponse(problem, editable);
+    }
+
+    @Transactional(readOnly = true)
+    public ProblemListResponse getProblems() {
+        List<Problem> problems =
+                problemRepository.findAllWithCreatorOrderByIdDesc();
+
         return problemMapper.toListResponse(problems);
     }
 
@@ -66,13 +80,6 @@ public class ProblemService {
         Problem problem = problemMapper.toEntity(request, creator);
         Problem savedProblem = problemRepository.save(problem);
         return new ProblemCreateResponse(savedProblem.getId());
-    }
-
-    @Transactional(readOnly = true)
-    public ProblemDetailResponse getProblem(Long problemId) {
-        Problem problem = problemRepository.findByIdWithCreator(problemId)
-                .orElseThrow(ProblemNotFoundException::new);
-        return problemMapper.toDetailResponse(problem);
     }
 
     @CacheEvict(

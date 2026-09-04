@@ -155,8 +155,8 @@ class ProblemControllerTest {
     }
 
     @Test
-    @DisplayName("문제 상세 조회에 성공한다")
-    void get_problem_success() throws Exception {
+    @DisplayName("비로그인 사용자가 문제 상세 조회에 성공한다")
+    void get_problem_success_when_not_authenticated() throws Exception {
         // given
         Long problemId = 1L;
 
@@ -164,7 +164,31 @@ class ProblemControllerTest {
         mockMvc.perform(get("/api/problems/{problemId}", problemId))
                 .andExpect(status().isOk());
 
-        verify(problemService).getProblem(problemId);
+        verify(problemService).getProblem(null, problemId);
+    }
+
+    @Test
+    @DisplayName("로그인 사용자가 문제 상세 조회 시 userId를 서비스에 전달한다")
+    void get_problem_success_when_authenticated() throws Exception {
+        // given
+        Long userId = 1L;
+        Long problemId = 10L;
+
+        Authentication authentication =
+                new UsernamePasswordAuthenticationToken(
+                        userId,
+                        null,
+                        List.of()
+                );
+
+        // when & then
+        mockMvc.perform(
+                        get("/api/problems/{problemId}", problemId)
+                                .principal(authentication)
+                )
+                .andExpect(status().isOk());
+
+        verify(problemService).getProblem(userId, problemId);
     }
 
     @Test
@@ -173,14 +197,14 @@ class ProblemControllerTest {
         // given
         Long problemId = 999L;
 
-        when(problemService.getProblem(problemId))
+        when(problemService.getProblem(null, problemId))
                 .thenThrow(new ProblemNotFoundException());
 
         // when & then
         mockMvc.perform(get("/api/problems/{problemId}", problemId))
                 .andExpect(status().isNotFound());
 
-        verify(problemService).getProblem(problemId);
+        verify(problemService).getProblem(null, problemId);
     }
 
     @Test

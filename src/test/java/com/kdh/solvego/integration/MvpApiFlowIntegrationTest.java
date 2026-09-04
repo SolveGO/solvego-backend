@@ -59,13 +59,13 @@ class MvpApiFlowIntegrationTest {
         getProblemList(problemId);
 
         // 5. 문제 상세 조회
-        getProblemDetail(problemId);
+        getProblemDetail(accessToken, problemId);
 
         // 6. 문제 수정
         updateProblem(accessToken, problemId);
 
         // 7. 수정된 문제 상세 조회
-        getUpdatedProblemDetail(problemId);
+        getUpdatedProblemDetail(accessToken, problemId);
 
         // 8. 오답 제출
         submitWrongAttempt(accessToken, problemId);
@@ -142,12 +142,20 @@ class MvpApiFlowIntegrationTest {
                 .andExpect(jsonPath("$.totalPages").value(1));
     }
 
-    private void getProblemDetail(Long problemId) throws Exception {
-        mockMvc.perform(get("/api/problems/{problemId}", problemId))
+    private void getProblemDetail(
+            String accessToken,
+            Long problemId
+    ) throws Exception {
+        mockMvc.perform(get("/api/problems/{problemId}", problemId)
+                        .header(
+                                HttpHeaders.AUTHORIZATION,
+                                bearer(accessToken)
+                        ))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.title").value("problem title"))
                 .andExpect(jsonPath("$.description").value("problem description"))
+                .andExpect(jsonPath("$.owner").value(true))
                 .andExpect(jsonPath("$.answerPosition").doesNotExist());
     }
 
@@ -181,8 +189,15 @@ class MvpApiFlowIntegrationTest {
                 .andExpect(status().isNoContent());
     }
 
-    private void getUpdatedProblemDetail(Long problemId) throws Exception {
-        mockMvc.perform(get("/api/problems/{problemId}", problemId))
+    private void getUpdatedProblemDetail(
+            String accessToken,
+            Long problemId
+    ) throws Exception {
+        mockMvc.perform(get("/api/problems/{problemId}", problemId)
+                        .header(
+                                HttpHeaders.AUTHORIZATION,
+                                bearer(accessToken)
+                        ))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.problemId").value(problemId))
@@ -193,6 +208,7 @@ class MvpApiFlowIntegrationTest {
                 .andExpect(jsonPath("$.whiteStones[0].x").value(6))
                 .andExpect(jsonPath("$.whiteStones[0].y").value(6))
                 .andExpect(jsonPath("$.nextPlayer").value("WHITE"))
+                .andExpect(jsonPath("$.owner").value(true))
                 .andExpect(jsonPath("$.answerPosition").doesNotExist());
     }
 
