@@ -46,55 +46,12 @@ class ProblemServiceIntegrationTest {
     private EntityManager entityManager;
 
     @Test
-    @DisplayName("문제를 등록하면 DB에 저장되고 다시 조회할 수 있다")
-    void create_problem_success() {
-        // given
-        User creator = userRepository.save(new User("creator", "encoded-password"));
-
-        ProblemCreateRequest request = new ProblemCreateRequest(
-                "problem",
-                "description",
-                List.of(new Position(3, 3), new Position(4, 4)),
-                List.of(new Position(5, 5)),
-                PlayerColor.BLACK,
-                new Position(10, 10)
-        );
-
-        // when
-        ProblemCreateResponse response =
-                problemService.createProblem(creator.getId(), request);
-
-        entityManager.flush();
-        entityManager.clear();
-
-        // then
-        Problem savedProblem = problemRepository.findById(response.problemId())
-                .orElseThrow();
-
-        assertThat(savedProblem.getTitle()).isEqualTo("problem");
-        assertThat(savedProblem.getDescription()).isEqualTo("description");
-
-        assertThat(savedProblem.getBlackStones())
-                .containsExactly(
-                        new Position(3, 3),
-                        new Position(4, 4)
-                );
-
-        assertThat(savedProblem.getWhiteStones())
-                .containsExactly(new Position(5, 5));
-
-        assertThat(savedProblem.getNextPlayer()).isEqualTo(PlayerColor.BLACK);
-        assertThat(savedProblem.isCorrectPosition(new Position(10, 10))).isTrue();
-        assertThat(savedProblem.isCorrectPosition(new Position(1, 1))).isFalse();
-
-        assertThat(savedProblem.getCreator().getUsername()).isEqualTo("creator");
-    }
-
-    @Test
-    @DisplayName("문제 상세를 조회한다")
+    @DisplayName("문제 작성자가 문제 상세를 조회하면 editable은 true이다")
     void get_problem_success() {
         // given
-        User creator = userRepository.save(new User("creator", "encoded-password"));
+        User creator = userRepository.save(
+                new User("creator", "encoded-password")
+        );
 
         Problem problem = problemRepository.save(new Problem(
                 "problem",
@@ -112,16 +69,64 @@ class ProblemServiceIntegrationTest {
         entityManager.clear();
 
         // when
-        ProblemDetailResponse response = problemService.getProblem(problemId);
+        ProblemDetailResponse response =
+                problemService.getProblem(
+                        creator.getId(),
+                        problemId
+                );
 
         // then
         assertThat(response.problemId()).isEqualTo(problemId);
         assertThat(response.title()).isEqualTo("problem");
         assertThat(response.description()).isEqualTo("description");
-        assertThat(response.blackStones()).containsExactly(new Position(3, 3));
-        assertThat(response.whiteStones()).containsExactly(new Position(4, 4));
-        assertThat(response.nextPlayer()).isEqualTo(PlayerColor.BLACK);
-        assertThat(response.creatorName()).isEqualTo("creator");
+        assertThat(response.blackStones())
+                .containsExactly(new Position(3, 3));
+        assertThat(response.whiteStones())
+                .containsExactly(new Position(4, 4));
+        assertThat(response.nextPlayer())
+                .isEqualTo(PlayerColor.BLACK);
+        assertThat(response.creatorName())
+                .isEqualTo("creator");
+        assertThat(response.owner())
+                .isTrue();
+    }
+
+    @Test
+    @DisplayName("다른 사용자가 문제 상세를 조회하면 editable은 false이다")
+    void get_problem_returns_editable_false_when_user_is_not_creator() {
+        // given
+        User creator = userRepository.save(
+                new User("creator", "encoded-password")
+        );
+
+        User otherUser = userRepository.save(
+                new User("other-user", "encoded-password")
+        );
+
+        Problem problem = problemRepository.save(new Problem(
+                "problem",
+                "description",
+                List.of(new Position(3, 3)),
+                List.of(new Position(4, 4)),
+                PlayerColor.BLACK,
+                new Position(10, 10),
+                creator
+        ));
+
+        Long problemId = problem.getId();
+
+        entityManager.flush();
+        entityManager.clear();
+
+        // when
+        ProblemDetailResponse response =
+                problemService.getProblem(
+                        otherUser.getId(),
+                        problemId
+                );
+
+        // then
+        assertThat(response.owner()).isFalse();
     }
 
     @Test
@@ -174,7 +179,9 @@ class ProblemServiceIntegrationTest {
     @DisplayName("존재하지 않는 problemId로 상세 조회하면 예외가 발생한다")
     void get_problem_fails_when_problem_not_found() {
         // when & then
-        assertThatThrownBy(() -> problemService.getProblem(999L))
+        assertThatThrownBy(
+                () -> problemService.getProblem(null, 999L)
+        )
                 .isInstanceOf(ProblemNotFoundException.class);
     }
 

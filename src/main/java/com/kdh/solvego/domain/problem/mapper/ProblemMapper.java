@@ -52,7 +52,10 @@ public class ProblemMapper {
         );
     }
 
-    public ProblemDetailResponse toDetailResponse(Problem problem) {
+    public ProblemDetailResponse toDetailResponse(
+            Problem problem,
+            boolean editable
+    ) {
         return new ProblemDetailResponse(
                 problem.getId(),
                 problem.getTitle(),
@@ -60,7 +63,8 @@ public class ProblemMapper {
                 problem.getBlackStones(),
                 problem.getWhiteStones(),
                 problem.getNextPlayer(),
-                problem.getCreator().getUsername()
+                problem.getCreator().getUsername(),
+                editable
         );
     }
 

@@ -161,8 +161,8 @@ class ProblemControllerIntegrationTest {
     }
 
     @Test
-    @DisplayName("문제 상세를 조회할 수 있다")
-    void get_problem_success() throws Exception {
+    @DisplayName("비로그인 사용자는 문제 상세를 조회할 수 있지만 수정할 수 없다")
+    void get_problem_success_without_jwt() throws Exception {
         // given
         String accessToken = signupAndLogin("username3", "1234");
         Long problemId = createProblem(accessToken);
@@ -171,7 +171,49 @@ class ProblemControllerIntegrationTest {
         mockMvc.perform(get("/api/problems/{problemId}", problemId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.title").value("problem title"))
-                .andExpect(jsonPath("$.description").value("problem description"));
+                .andExpect(jsonPath("$.description").value("problem description"))
+                .andExpect(jsonPath("$.owner").value(false));
+    }
+
+    @Test
+    @DisplayName("문제 작성자가 상세 조회하면 editable은 true이다")
+    void get_problem_editable_true_when_user_is_creator() throws Exception {
+        // given
+        String accessToken = signupAndLogin("detailOwner", "1234");
+        Long problemId = createProblem(accessToken);
+
+        // when & then
+        mockMvc.perform(get("/api/problems/{problemId}", problemId)
+                        .header(
+                                HttpHeaders.AUTHORIZATION,
+                                bearer(accessToken)
+                        ))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.problemId").value(problemId))
+                .andExpect(jsonPath("$.owner").value(true));
+    }
+
+    @Test
+    @DisplayName("문제 작성자가 아닌 사용자가 상세 조회하면 editable은 false이다")
+    void get_problem_editable_false_when_user_is_not_creator() throws Exception {
+        // given
+        String ownerAccessToken =
+                signupAndLogin("detailOwner2", "1234");
+
+        Long problemId = createProblem(ownerAccessToken);
+
+        String otherUserAccessToken =
+                signupAndLogin("detailOtherUser", "1234");
+
+        // when & then
+        mockMvc.perform(get("/api/problems/{problemId}", problemId)
+                        .header(
+                                HttpHeaders.AUTHORIZATION,
+                                bearer(otherUserAccessToken)
+                        ))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.problemId").value(problemId))
+                .andExpect(jsonPath("$.owner").value(false));
     }
 
     @Test

@@ -108,36 +108,127 @@ class ProblemServiceTest {
     }
 
     @Test
-    @DisplayName("문제 목록을 조회한다")
-    void get_problems_success() {
+    @DisplayName("문제 작성자가 문제 상세를 조회하면 editable은 true이다")
+    void get_problem_success_when_user_is_creator() {
         // given
+        Long userId = 1L;
+        Long problemId = 10L;
+
         User creator = new User("creator", "encoded-password");
+        ReflectionTestUtils.setField(creator, "id", userId);
 
         Problem problem = createProblem(creator, "problem");
-        ReflectionTestUtils.setField(problem, "id", 1L);
+        ReflectionTestUtils.setField(problem, "id", problemId);
 
-        List<Problem> problems = List.of(problem);
-
-        ProblemListResponse expectedResponse = new ProblemListResponse(
-                List.of(new ProblemSummaryResponse(1L, "problem", "creator"))
+        ProblemDetailResponse expectedResponse = new ProblemDetailResponse(
+                problemId,
+                "problem",
+                "description",
+                List.of(new Position(3, 3)),
+                List.of(new Position(4, 4)),
+                PlayerColor.BLACK,
+                "creator",
+                true
         );
 
-        when(problemRepository.findAllWithCreatorOrderByIdDesc())
-                .thenReturn(problems);
+        when(problemRepository.findByIdWithCreator(problemId))
+                .thenReturn(Optional.of(problem));
 
-        when(problemMapper.toListResponse(problems))
+        when(problemMapper.toDetailResponse(problem, true))
                 .thenReturn(expectedResponse);
 
         // when
-        ProblemListResponse response = problemService.getProblems();
+        ProblemDetailResponse response =
+                problemService.getProblem(userId, problemId);
 
         // then
         assertThat(response).isEqualTo(expectedResponse);
+        assertThat(response.owner()).isTrue();
 
-        verify(problemRepository).findAllWithCreatorOrderByIdDesc();
-        verify(problemMapper).toListResponse(problems);
+        verify(problemRepository).findByIdWithCreator(problemId);
+        verify(problemMapper).toDetailResponse(problem, true);
     }
 
+    @Test
+    @DisplayName("다른 사용자가 문제 상세를 조회하면 editable은 false이다")
+    void get_problem_success_when_user_is_not_creator() {
+        // given
+        Long creatorId = 1L;
+        Long otherUserId = 2L;
+        Long problemId = 10L;
+
+        User creator = new User("creator", "encoded-password");
+        ReflectionTestUtils.setField(creator, "id", creatorId);
+
+        Problem problem = createProblem(creator, "problem");
+        ReflectionTestUtils.setField(problem, "id", problemId);
+
+        ProblemDetailResponse expectedResponse = new ProblemDetailResponse(
+                problemId,
+                "problem",
+                "description",
+                List.of(new Position(3, 3)),
+                List.of(new Position(4, 4)),
+                PlayerColor.BLACK,
+                "creator",
+                false
+        );
+
+        when(problemRepository.findByIdWithCreator(problemId))
+                .thenReturn(Optional.of(problem));
+
+        when(problemMapper.toDetailResponse(problem, false))
+                .thenReturn(expectedResponse);
+
+        // when
+        ProblemDetailResponse response =
+                problemService.getProblem(otherUserId, problemId);
+
+        // then
+        assertThat(response.owner()).isFalse();
+
+        verify(problemRepository).findByIdWithCreator(problemId);
+        verify(problemMapper).toDetailResponse(problem, false);
+    }
+    @Test
+    @DisplayName("비로그인 사용자가 문제 상세를 조회하면 editable은 false이다")
+    void get_problem_success_when_not_authenticated() {
+        // given
+        Long problemId = 10L;
+
+        User creator = new User("creator", "encoded-password");
+        ReflectionTestUtils.setField(creator, "id", 1L);
+
+        Problem problem = createProblem(creator, "problem");
+        ReflectionTestUtils.setField(problem, "id", problemId);
+
+        ProblemDetailResponse expectedResponse = new ProblemDetailResponse(
+                problemId,
+                "problem",
+                "description",
+                List.of(new Position(3, 3)),
+                List.of(new Position(4, 4)),
+                PlayerColor.BLACK,
+                "creator",
+                false
+        );
+
+        when(problemRepository.findByIdWithCreator(problemId))
+                .thenReturn(Optional.of(problem));
+
+        when(problemMapper.toDetailResponse(problem, false))
+                .thenReturn(expectedResponse);
+
+        // when
+        ProblemDetailResponse response =
+                problemService.getProblem(null, problemId);
+
+        // then
+        assertThat(response.owner()).isFalse();
+
+        verify(problemRepository).findByIdWithCreator(problemId);
+        verify(problemMapper).toDetailResponse(problem, false);
+    }
     @Test
     @DisplayName("문제가 하나도 없으면 빈 목록을 반환한다")
     void get_problems_empty_returns_empty_list() {
@@ -163,43 +254,6 @@ class ProblemServiceTest {
     }
 
     @Test
-    @DisplayName("문제 상세를 조회한다")
-    void get_problem_success() {
-        // given
-        Long problemId = 1L;
-
-        User creator = new User("creator", "encoded-password");
-
-        Problem problem = createProblem(creator, "problem");
-        ReflectionTestUtils.setField(problem, "id", problemId);
-
-        ProblemDetailResponse expectedResponse = new ProblemDetailResponse(
-                problemId,
-                "problem",
-                "description",
-                List.of(new Position(3, 3)),
-                List.of(new Position(4, 4)),
-                PlayerColor.BLACK,
-                "creator"
-        );
-
-        when(problemRepository.findByIdWithCreator(problemId))
-                .thenReturn(Optional.of(problem));
-
-        when(problemMapper.toDetailResponse(problem))
-                .thenReturn(expectedResponse);
-
-        // when
-        ProblemDetailResponse response = problemService.getProblem(problemId);
-
-        // then
-        assertThat(response).isEqualTo(expectedResponse);
-
-        verify(problemRepository).findByIdWithCreator(problemId);
-        verify(problemMapper).toDetailResponse(problem);
-    }
-
-    @Test
     @DisplayName("존재하지 않는 problemId이면 예외가 발생한다")
     void get_problem_fails_when_problem_not_found() {
         // given
@@ -209,7 +263,7 @@ class ProblemServiceTest {
                 .thenReturn(Optional.empty());
 
         // when & then
-        assertThatThrownBy(() -> problemService.getProblem(problemId))
+        assertThatThrownBy(() -> problemService.getProblem(null, problemId))
                 .isInstanceOf(ProblemNotFoundException.class);
 
         verify(problemRepository).findByIdWithCreator(problemId);

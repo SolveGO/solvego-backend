@@ -28,6 +28,9 @@ public record ProblemDetailResponse(
         PlayerColor nextPlayer,
 
         @Schema(description = "문제 작성자 이름", example = "solvego123")
-        String creatorName
+        String creatorName,
+
+        @Schema(description = "현재 사용자의 수정/삭제 가능 여부", example = "true")
+        boolean owner
 ) {
 }
