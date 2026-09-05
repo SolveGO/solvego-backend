@@ -13,6 +13,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import com.kdh.solvego.domain.ai.dto.AiStatusResponse;
 
 import java.util.List;
 
@@ -91,5 +92,26 @@ class AiServiceTest {
                 .isEqualTo(expectedResponse);
 
         verify(aiClient).analyze(request);
+    }
+
+    @Test
+    @DisplayName("AI 서버 상태 조회에 성공하면 AiClient의 상태 조회 결과를 반환한다")
+    void status_success() {
+        // given
+        AiStatusResponse expectedResponse =
+                new AiStatusResponse("ONLINE");
+
+        when(aiClient.status())
+                .thenReturn(expectedResponse);
+
+        // when
+        AiStatusResponse response =
+                aiService.status();
+
+        // then
+        assertThat(response)
+                .isEqualTo(expectedResponse);
+
+        verify(aiClient).status();
     }
 }

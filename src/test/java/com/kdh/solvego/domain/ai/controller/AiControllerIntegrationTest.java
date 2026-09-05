@@ -34,6 +34,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -57,6 +58,9 @@ class AiControllerIntegrationTest {
     private static int analyzeStatus;
     private static String analyzeBody;
 
+    private static int healthStatus;
+    private static String healthBody;
+
     @BeforeAll
     static void startAiServer() throws IOException {
         aiServer = HttpServer.create(
@@ -77,6 +81,14 @@ class AiControllerIntegrationTest {
                     exchange,
                     analyzeStatus,
                     analyzeBody
+            );
+        });
+
+        aiServer.createContext("/health", exchange -> {
+            respond(
+                    exchange,
+                    healthStatus,
+                    healthBody
             );
         });
 
@@ -125,6 +137,13 @@ class AiControllerIntegrationTest {
                   "bestWinRate": 0.48,
                   "selectedWinRate": 0.41,
                   "winRateLoss": 0.07
+                }
+                """;
+
+        healthStatus = 200;
+        healthBody = """
+                {
+                  "status": "ok"
                 }
                 """;
     }
@@ -324,6 +343,46 @@ class AiControllerIntegrationTest {
                 .andExpect(
                         jsonPath("$.message")
                                 .value("AI analysis timed out")
+                );
+    }
+
+    @Test
+    @DisplayName("AI 서버가 정상이면 인증 없이 ONLINE 상태를 조회할 수 있다")
+    void status_returns_online_when_ai_server_is_healthy() throws Exception {
+        // when & then
+        mockMvc.perform(get("/api/ai/status"))
+                .andExpect(status().isOk())
+                .andExpect(
+                        content().contentTypeCompatibleWith(
+                                MediaType.APPLICATION_JSON
+                        )
+                )
+                .andExpect(
+                        jsonPath("$.status").value("ONLINE")
+                );
+    }
+
+    @Test
+    @DisplayName("AI 서버가 오류를 반환하면 인증 없이 OFFLINE 상태를 조회할 수 있다")
+    void status_returns_offline_when_ai_server_returns_error() throws Exception {
+        // given
+        healthStatus = 500;
+        healthBody = """
+                {
+                  "detail": "internal server error"
+                }
+                """;
+
+        // when & then
+        mockMvc.perform(get("/api/ai/status"))
+                .andExpect(status().isOk())
+                .andExpect(
+                        content().contentTypeCompatibleWith(
+                                MediaType.APPLICATION_JSON
+                        )
+                )
+                .andExpect(
+                        jsonPath("$.status").value("OFFLINE")
                 );
     }
 

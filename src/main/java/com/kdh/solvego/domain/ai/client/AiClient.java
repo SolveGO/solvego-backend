@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
+import com.kdh.solvego.domain.ai.dto.AiStatusResponse;
 
 @Component
 public class AiClient {
@@ -64,6 +65,19 @@ public class AiClient {
 
         } catch (ResourceAccessException e) {
             throw new AiServerException();
+        }
+    }
+    public AiStatusResponse status() {
+        try {
+            restClient.get()
+                    .uri("/health")
+                    .retrieve()
+                    .toBodilessEntity();
+
+            return new AiStatusResponse("ONLINE");
+
+        } catch (RestClientResponseException | ResourceAccessException e) {
+            return new AiStatusResponse("OFFLINE");
         }
     }
 }
