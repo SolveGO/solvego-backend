@@ -5,6 +5,8 @@ import com.kdh.solvego.domain.problem.exception.ProblemOwnershipException;
 import com.kdh.solvego.domain.problem.exception.ProblemNotFoundException;
 import com.kdh.solvego.domain.user.exception.DuplicateUsernameException;
 import com.kdh.solvego.domain.user.exception.UserNotFoundException;
+import com.kdh.solvego.domain.ai.exception.AiServerException;
+import com.kdh.solvego.domain.ai.exception.AiTimeoutException;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -59,6 +61,22 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.FORBIDDEN)
     public ErrorResponse handleProblemOwnershipException(
             ProblemOwnershipException e
+    ) {
+        return new ErrorResponse(e.getMessage());
+    }
+
+    @ExceptionHandler(AiServerException.class)
+    @ResponseStatus(HttpStatus.BAD_GATEWAY)
+    public ErrorResponse handleAiServerException(
+            AiServerException e
+    ) {
+        return new ErrorResponse(e.getMessage());
+    }
+
+    @ExceptionHandler(AiTimeoutException.class)
+    @ResponseStatus(HttpStatus.GATEWAY_TIMEOUT)
+    public ErrorResponse handleAiTimeoutException(
+            AiTimeoutException e
     ) {
         return new ErrorResponse(e.getMessage());
     }
