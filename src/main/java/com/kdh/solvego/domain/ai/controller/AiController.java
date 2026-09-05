@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import com.kdh.solvego.domain.ai.dto.AiStatusResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
@@ -135,5 +136,19 @@ public class AiController {
             @Valid @RequestBody AiAnalyzeRequest request
     ) {
         return aiService.analyze(request);
+    }
+    @Operation(
+            summary = "AI 서버 상태 조회",
+            description = "AI 서버의 현재 연결 상태를 반환합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "AI 서버 상태 조회 성공"
+            )
+    })
+    @GetMapping("/status")
+    public AiStatusResponse status() {
+        return aiService.status();
     }
 }

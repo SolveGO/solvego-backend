@@ -5,6 +5,7 @@ import com.kdh.solvego.domain.ai.dto.AiAnalyzeRequest;
 import com.kdh.solvego.domain.ai.dto.AiAnalyzeResponse;
 import com.kdh.solvego.domain.ai.dto.AiRecommendRequest;
 import com.kdh.solvego.domain.ai.dto.AiRecommendResponse;
+import com.kdh.solvego.domain.ai.dto.AiStatusResponse;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -22,5 +23,9 @@ public class AiService {
 
     public AiAnalyzeResponse analyze(AiAnalyzeRequest request) {
         return aiClient.analyze(request);
+    }
+
+    public AiStatusResponse status() {
+        return aiClient.status();
     }
 }

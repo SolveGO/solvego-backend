@@ -19,6 +19,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import com.kdh.solvego.domain.ai.dto.AiStatusResponse;
 
 import java.util.List;
 
@@ -30,6 +31,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 
 @WebMvcTest(AiController.class)
 @AutoConfigureMockMvc(addFilters = false)
@@ -266,5 +268,22 @@ class AiControllerTest {
                         .value("AI analysis timed out"));
 
         verify(aiService).analyze(any(AiAnalyzeRequest.class));
+    }
+    @Test
+    @DisplayName("AI 서버 상태 조회에 성공하면 200 OK와 상태를 반환한다")
+    void status_success() throws Exception {
+        // given
+        AiStatusResponse response = new AiStatusResponse("ONLINE");
+
+        when(aiService.status())
+                .thenReturn(response);
+
+        // when & then
+        mockMvc.perform(get("/api/ai/status"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.status").value("ONLINE"));
+
+        verify(aiService).status();
     }
 }

@@ -16,6 +16,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
+import com.kdh.solvego.domain.ai.dto.AiStatusResponse;
 
 import java.util.List;
 
@@ -219,6 +220,48 @@ class AiClientTest {
         // when & then
         assertThatThrownBy(() -> aiClient.analyze(request))
                 .isInstanceOf(AiServerException.class);
+
+        mockServer.verify();
+    }
+    @Test
+    @DisplayName("AI 서버 상태 조회에 성공하면 ONLINE을 반환한다")
+    void status_success() {
+        // given
+        mockServer.expect(requestTo("http://localhost:8000/health"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess(
+                        """
+                        {
+                          "status": "ok"
+                        }
+                        """,
+                        MediaType.APPLICATION_JSON
+                ));
+
+        // when
+        AiStatusResponse response = aiClient.status();
+
+        // then
+        assertThat(response.status())
+                .isEqualTo("ONLINE");
+
+        mockServer.verify();
+    }
+
+    @Test
+    @DisplayName("AI 서버 상태 조회 중 오류가 발생하면 OFFLINE을 반환한다")
+    void status_returns_offline_when_ai_server_returns_error() {
+        // given
+        mockServer.expect(requestTo("http://localhost:8000/health"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withStatus(HttpStatus.INTERNAL_SERVER_ERROR));
+
+        // when
+        AiStatusResponse response = aiClient.status();
+
+        // then
+        assertThat(response.status())
+                .isEqualTo("OFFLINE");
 
         mockServer.verify();
     }
