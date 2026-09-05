@@ -72,6 +72,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
                         .requestMatchers(HttpMethod.GET,"/api/problems").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/problems/*").permitAll()
+                        .requestMatchers("/api/ai/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/problems/*/attempts").authenticated()
                         .requestMatchers("/api/users/me/wrong-problems").authenticated()
                         .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
