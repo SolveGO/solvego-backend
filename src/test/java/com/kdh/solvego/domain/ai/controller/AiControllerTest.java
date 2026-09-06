@@ -5,6 +5,7 @@ import com.kdh.solvego.domain.ai.dto.AiAnalyzeRequest;
 import com.kdh.solvego.domain.ai.dto.AiAnalyzeResponse;
 import com.kdh.solvego.domain.ai.dto.AiRecommendRequest;
 import com.kdh.solvego.domain.ai.dto.AiRecommendResponse;
+import com.kdh.solvego.domain.ai.dto.AiStatusResponse;
 import com.kdh.solvego.domain.ai.exception.AiServerException;
 import com.kdh.solvego.domain.ai.exception.AiTimeoutException;
 import com.kdh.solvego.domain.ai.service.AiService;
@@ -19,7 +20,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import com.kdh.solvego.domain.ai.dto.AiStatusResponse;
 
 import java.util.List;
 
@@ -27,11 +27,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 
 @WebMvcTest(AiController.class)
 @AutoConfigureMockMvc(addFilters = false)
@@ -61,7 +61,20 @@ class AiControllerTest {
 
         AiRecommendResponse response = new AiRecommendResponse(
                 new Position(15, 3),
-                0.48
+                0.48,
+                2.5,
+                List.of(
+                        new AiRecommendResponse.Candidate(
+                                new Position(15, 3),
+                                0.48,
+                                2.5,
+                                10,
+                                List.of(
+                                        new Position(15, 3),
+                                        new Position(3, 15)
+                                )
+                        )
+                )
         );
 
         when(aiService.recommend(any(AiRecommendRequest.class)))
@@ -75,7 +88,18 @@ class AiControllerTest {
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.bestMove.x").value(15))
                 .andExpect(jsonPath("$.bestMove.y").value(3))
-                .andExpect(jsonPath("$.bestWinRate").value(0.48));
+                .andExpect(jsonPath("$.bestWinRate").value(0.48))
+                .andExpect(jsonPath("$.scoreLead").value(2.5))
+                .andExpect(jsonPath("$.candidates.length()").value(1))
+                .andExpect(jsonPath("$.candidates[0].move.x").value(15))
+                .andExpect(jsonPath("$.candidates[0].move.y").value(3))
+                .andExpect(jsonPath("$.candidates[0].winRate").value(0.48))
+                .andExpect(jsonPath("$.candidates[0].scoreLead").value(2.5))
+                .andExpect(jsonPath("$.candidates[0].visits").value(10))
+                .andExpect(jsonPath("$.candidates[0].pv[0].x").value(15))
+                .andExpect(jsonPath("$.candidates[0].pv[0].y").value(3))
+                .andExpect(jsonPath("$.candidates[0].pv[1].x").value(3))
+                .andExpect(jsonPath("$.candidates[0].pv[1].y").value(15));
 
         verify(aiService).recommend(any(AiRecommendRequest.class));
     }
@@ -96,7 +120,20 @@ class AiControllerTest {
                 new Position(10, 10),
                 0.48,
                 0.41,
-                0.07
+                0.07,
+                2.5,
+                List.of(
+                        new AiAnalyzeResponse.Candidate(
+                                new Position(15, 3),
+                                0.48,
+                                2.5,
+                                10,
+                                List.of(
+                                        new Position(15, 3),
+                                        new Position(3, 15)
+                                )
+                        )
+                )
         );
 
         when(aiService.analyze(any(AiAnalyzeRequest.class)))
@@ -114,7 +151,18 @@ class AiControllerTest {
                 .andExpect(jsonPath("$.selectedMove.y").value(10))
                 .andExpect(jsonPath("$.bestWinRate").value(0.48))
                 .andExpect(jsonPath("$.selectedWinRate").value(0.41))
-                .andExpect(jsonPath("$.winRateLoss").value(0.07));
+                .andExpect(jsonPath("$.winRateLoss").value(0.07))
+                .andExpect(jsonPath("$.scoreLead").value(2.5))
+                .andExpect(jsonPath("$.candidates.length()").value(1))
+                .andExpect(jsonPath("$.candidates[0].move.x").value(15))
+                .andExpect(jsonPath("$.candidates[0].move.y").value(3))
+                .andExpect(jsonPath("$.candidates[0].winRate").value(0.48))
+                .andExpect(jsonPath("$.candidates[0].scoreLead").value(2.5))
+                .andExpect(jsonPath("$.candidates[0].visits").value(10))
+                .andExpect(jsonPath("$.candidates[0].pv[0].x").value(15))
+                .andExpect(jsonPath("$.candidates[0].pv[0].y").value(3))
+                .andExpect(jsonPath("$.candidates[0].pv[1].x").value(3))
+                .andExpect(jsonPath("$.candidates[0].pv[1].y").value(15));
 
         verify(aiService).analyze(any(AiAnalyzeRequest.class));
     }
@@ -269,6 +317,7 @@ class AiControllerTest {
 
         verify(aiService).analyze(any(AiAnalyzeRequest.class));
     }
+
     @Test
     @DisplayName("AI 서버 상태 조회에 성공하면 200 OK와 상태를 반환한다")
     void status_success() throws Exception {

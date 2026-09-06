@@ -4,6 +4,7 @@ import com.kdh.solvego.domain.ai.dto.AiAnalyzeRequest;
 import com.kdh.solvego.domain.ai.dto.AiAnalyzeResponse;
 import com.kdh.solvego.domain.ai.dto.AiRecommendRequest;
 import com.kdh.solvego.domain.ai.dto.AiRecommendResponse;
+import com.kdh.solvego.domain.ai.dto.AiStatusResponse;
 import com.kdh.solvego.domain.ai.exception.AiServerException;
 import com.kdh.solvego.domain.ai.exception.AiTimeoutException;
 import com.kdh.solvego.domain.common.vo.Position;
@@ -16,7 +17,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
-import com.kdh.solvego.domain.ai.dto.AiStatusResponse;
 
 import java.util.List;
 
@@ -47,7 +47,7 @@ class AiClientTest {
     }
 
     @Test
-    @DisplayName("AI 추천 요청에 성공하면 추천 좌표와 승률을 반환한다")
+    @DisplayName("AI 추천 요청에 성공하면 추천 수와 분석 정보를 반환한다")
     void recommend_success() {
         // given
         AiRecommendRequest request = new AiRecommendRequest(
@@ -65,7 +65,29 @@ class AiClientTest {
                             "x": 15,
                             "y": 3
                           },
-                          "bestWinRate": 0.48
+                          "bestWinRate": 0.48,
+                          "scoreLead": 2.5,
+                          "candidates": [
+                            {
+                              "move": {
+                                "x": 15,
+                                "y": 3
+                              },
+                              "winRate": 0.48,
+                              "scoreLead": 2.5,
+                              "visits": 10,
+                              "pv": [
+                                {
+                                  "x": 15,
+                                  "y": 3
+                                },
+                                {
+                                  "x": 3,
+                                  "y": 15
+                                }
+                              ]
+                            }
+                          ]
                         }
                         """,
                         MediaType.APPLICATION_JSON
@@ -80,6 +102,111 @@ class AiClientTest {
 
         assertThat(response.bestWinRate())
                 .isEqualTo(0.48);
+
+        assertThat(response.scoreLead())
+                .isEqualTo(2.5);
+
+        assertThat(response.candidates())
+                .hasSize(1);
+
+        AiRecommendResponse.Candidate candidate =
+                response.candidates().get(0);
+
+        assertThat(candidate.move())
+                .isEqualTo(new Position(15, 3));
+
+        assertThat(candidate.winRate())
+                .isEqualTo(0.48);
+
+        assertThat(candidate.scoreLead())
+                .isEqualTo(2.5);
+
+        assertThat(candidate.visits())
+                .isEqualTo(10);
+
+        assertThat(candidate.pv())
+                .containsExactly(
+                        new Position(15, 3),
+                        new Position(3, 15)
+                );
+
+        mockServer.verify();
+    }
+
+    @Test
+    @DisplayName("AI가 PASS를 반환하면 null로 역직렬화한다")
+    void recommend_success_when_ai_passes() {
+        // given
+        AiRecommendRequest request = new AiRecommendRequest(
+                List.of(),
+                List.of(),
+                PlayerColor.BLACK
+        );
+
+        mockServer.expect(requestTo("http://localhost:8000/recommend"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withSuccess(
+                        """
+                        {
+                          "bestMove": null,
+                          "bestWinRate": 0.72,
+                          "scoreLead": 5.5,
+                          "candidates": [
+                            {
+                              "move": null,
+                              "winRate": 0.72,
+                              "scoreLead": 5.5,
+                              "visits": 10,
+                              "pv": [
+                                null,
+                                {
+                                  "x": 3,
+                                  "y": 3
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                        """,
+                        MediaType.APPLICATION_JSON
+                ));
+
+        // when
+        AiRecommendResponse response = aiClient.recommend(request);
+
+        // then
+        assertThat(response.bestMove())
+                .isNull();
+
+        assertThat(response.bestWinRate())
+                .isEqualTo(0.72);
+
+        assertThat(response.scoreLead())
+                .isEqualTo(5.5);
+
+        assertThat(response.candidates())
+                .hasSize(1);
+
+        AiRecommendResponse.Candidate candidate =
+                response.candidates().get(0);
+
+        assertThat(candidate.move())
+                .isNull();
+
+        assertThat(candidate.winRate())
+                .isEqualTo(0.72);
+
+        assertThat(candidate.scoreLead())
+                .isEqualTo(5.5);
+
+        assertThat(candidate.visits())
+                .isEqualTo(10);
+
+        assertThat(candidate.pv())
+                .containsExactly(
+                        null,
+                        new Position(3, 3)
+                );
 
         mockServer.verify();
     }
@@ -110,7 +237,29 @@ class AiClientTest {
                           },
                           "bestWinRate": 0.48,
                           "selectedWinRate": 0.41,
-                          "winRateLoss": 0.07
+                          "winRateLoss": 0.07,
+                          "scoreLead": 2.5,
+                          "candidates": [
+                            {
+                              "move": {
+                                "x": 15,
+                                "y": 3
+                              },
+                              "winRate": 0.48,
+                              "scoreLead": 2.5,
+                              "visits": 10,
+                              "pv": [
+                                {
+                                  "x": 15,
+                                  "y": 3
+                                },
+                                {
+                                  "x": 3,
+                                  "y": 15
+                                }
+                              ]
+                            }
+                          ]
                         }
                         """,
                         MediaType.APPLICATION_JSON
@@ -134,6 +283,33 @@ class AiClientTest {
 
         assertThat(response.winRateLoss())
                 .isEqualTo(0.07);
+
+        assertThat(response.scoreLead())
+                .isEqualTo(2.5);
+
+        assertThat(response.candidates())
+                .hasSize(1);
+
+        AiAnalyzeResponse.Candidate candidate =
+                response.candidates().get(0);
+
+        assertThat(candidate.move())
+                .isEqualTo(new Position(15, 3));
+
+        assertThat(candidate.winRate())
+                .isEqualTo(0.48);
+
+        assertThat(candidate.scoreLead())
+                .isEqualTo(2.5);
+
+        assertThat(candidate.visits())
+                .isEqualTo(10);
+
+        assertThat(candidate.pv())
+                .containsExactly(
+                        new Position(15, 3),
+                        new Position(3, 15)
+                );
 
         mockServer.verify();
     }
@@ -223,6 +399,7 @@ class AiClientTest {
 
         mockServer.verify();
     }
+
     @Test
     @DisplayName("AI 서버 상태 조회에 성공하면 ONLINE을 반환한다")
     void status_success() {

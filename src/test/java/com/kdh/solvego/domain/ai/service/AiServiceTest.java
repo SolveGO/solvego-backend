@@ -5,6 +5,7 @@ import com.kdh.solvego.domain.ai.dto.AiAnalyzeRequest;
 import com.kdh.solvego.domain.ai.dto.AiAnalyzeResponse;
 import com.kdh.solvego.domain.ai.dto.AiRecommendRequest;
 import com.kdh.solvego.domain.ai.dto.AiRecommendResponse;
+import com.kdh.solvego.domain.ai.dto.AiStatusResponse;
 import com.kdh.solvego.domain.common.vo.Position;
 import com.kdh.solvego.domain.problem.entity.PlayerColor;
 import org.junit.jupiter.api.DisplayName;
@@ -13,7 +14,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import com.kdh.solvego.domain.ai.dto.AiStatusResponse;
 
 import java.util.List;
 
@@ -43,7 +43,20 @@ class AiServiceTest {
         AiRecommendResponse expectedResponse =
                 new AiRecommendResponse(
                         new Position(15, 3),
-                        0.48
+                        0.48,
+                        2.5,
+                        List.of(
+                                new AiRecommendResponse.Candidate(
+                                        new Position(15, 3),
+                                        0.48,
+                                        2.5,
+                                        10,
+                                        List.of(
+                                                new Position(15, 3),
+                                                new Position(3, 15)
+                                        )
+                                )
+                        )
                 );
 
         when(aiClient.recommend(request))
@@ -77,7 +90,20 @@ class AiServiceTest {
                         new Position(10, 10),
                         0.48,
                         0.41,
-                        0.07
+                        0.07,
+                        2.5,
+                        List.of(
+                                new AiAnalyzeResponse.Candidate(
+                                        new Position(15, 3),
+                                        0.48,
+                                        2.5,
+                                        10,
+                                        List.of(
+                                                new Position(15, 3),
+                                                new Position(3, 15)
+                                        )
+                                )
+                        )
                 );
 
         when(aiClient.analyze(request))
