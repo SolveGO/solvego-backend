@@ -13,6 +13,8 @@ import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 import com.kdh.solvego.domain.ai.dto.AiStatusResponse;
+import com.kdh.solvego.domain.ai.dto.AiGameNextMoveRequest;
+import com.kdh.solvego.domain.ai.dto.AiGameNextMoveResponse;
 
 @Component
 public class AiClient {
@@ -55,6 +57,25 @@ public class AiClient {
                     .body(request)
                     .retrieve()
                     .body(AiAnalyzeResponse.class);
+
+        } catch (RestClientResponseException e) {
+            if (e.getStatusCode() == HttpStatus.GATEWAY_TIMEOUT) {
+                throw new AiTimeoutException();
+            }
+
+            throw new AiServerException();
+
+        } catch (ResourceAccessException e) {
+            throw new AiServerException();
+        }
+    }
+    public AiGameNextMoveResponse gameNextMove(AiGameNextMoveRequest request) {
+        try {
+            return restClient.post()
+                    .uri("/game/next-move")
+                    .body(request)
+                    .retrieve()
+                    .body(AiGameNextMoveResponse.class);
 
         } catch (RestClientResponseException e) {
             if (e.getStatusCode() == HttpStatus.GATEWAY_TIMEOUT) {

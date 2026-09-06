@@ -20,6 +20,8 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import com.kdh.solvego.domain.ai.dto.AiGameNextMoveRequest;
+import com.kdh.solvego.domain.ai.dto.AiGameNextMoveResponse;
 
 import java.util.List;
 
@@ -334,5 +336,134 @@ class AiControllerTest {
                 .andExpect(jsonPath("$.status").value("ONLINE"));
 
         verify(aiService).status();
+    }
+
+    @Test
+    @DisplayName("AI 대국 다음 수 요청에 성공하면 200 OK와 AI 착수 결과를 반환한다")
+    void gameNextMove_success() throws Exception {
+        // given
+        AiGameNextMoveRequest request = new AiGameNextMoveRequest(
+                List.of(
+                        new AiGameNextMoveRequest.Move(
+                                AiGameNextMoveRequest.Player.BLACK,
+                                new Position(3, 15)
+                        ),
+                        new AiGameNextMoveRequest.Move(
+                                AiGameNextMoveRequest.Player.WHITE,
+                                new Position(15, 3)
+                        ),
+                        new AiGameNextMoveRequest.Move(
+                                AiGameNextMoveRequest.Player.BLACK,
+                                null
+                        )
+                )
+        );
+
+        AiGameNextMoveResponse response =
+                new AiGameNextMoveResponse(
+                        new Position(4, 3),
+                        0.99,
+                        13.05
+                );
+
+        when(aiService.gameNextMove(any(AiGameNextMoveRequest.class)))
+                .thenReturn(response);
+
+        // when & then
+        mockMvc.perform(post("/api/ai/game/next-move")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.move.x").value(4))
+                .andExpect(jsonPath("$.move.y").value(3))
+                .andExpect(jsonPath("$.winRate").value(0.99))
+                .andExpect(jsonPath("$.scoreLead").value(13.05));
+
+        verify(aiService)
+                .gameNextMove(any(AiGameNextMoveRequest.class));
+    }
+
+
+    @Test
+    @DisplayName("AI 대국에서 AI가 PASS하면 move를 null로 반환한다")
+    void gameNextMove_success_when_ai_passes() throws Exception {
+        // given
+        AiGameNextMoveRequest request = new AiGameNextMoveRequest(
+                List.of(
+                        new AiGameNextMoveRequest.Move(
+                                AiGameNextMoveRequest.Player.BLACK,
+                                new Position(3, 15)
+                        )
+                )
+        );
+
+        AiGameNextMoveResponse response =
+                new AiGameNextMoveResponse(
+                        null,
+                        0.82,
+                        10.5
+                );
+
+        when(aiService.gameNextMove(any(AiGameNextMoveRequest.class)))
+                .thenReturn(response);
+
+        // when & then
+        mockMvc.perform(post("/api/ai/game/next-move")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.move").doesNotExist())
+                .andExpect(jsonPath("$.winRate").value(0.82))
+                .andExpect(jsonPath("$.scoreLead").value(10.5));
+
+        verify(aiService)
+                .gameNextMove(any(AiGameNextMoveRequest.class));
+    }
+
+
+    @Test
+    @DisplayName("AI 대국 서버 통신에 실패하면 502 Bad Gateway를 반환한다")
+    void gameNextMove_fails_when_ai_server_error_occurs() throws Exception {
+        // given
+        AiGameNextMoveRequest request =
+                new AiGameNextMoveRequest(List.of());
+
+        when(aiService.gameNextMove(any(AiGameNextMoveRequest.class)))
+                .thenThrow(new AiServerException());
+
+        // when & then
+        mockMvc.perform(post("/api/ai/game/next-move")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadGateway())
+                .andExpect(jsonPath("$.message")
+                        .value("Failed to communicate with AI server"));
+
+        verify(aiService)
+                .gameNextMove(any(AiGameNextMoveRequest.class));
+    }
+
+
+    @Test
+    @DisplayName("AI 대국 다음 수 분석 시간이 초과되면 504 Gateway Timeout을 반환한다")
+    void gameNextMove_fails_when_ai_server_times_out() throws Exception {
+        // given
+        AiGameNextMoveRequest request =
+                new AiGameNextMoveRequest(List.of());
+
+        when(aiService.gameNextMove(any(AiGameNextMoveRequest.class)))
+                .thenThrow(new AiTimeoutException());
+
+        // when & then
+        mockMvc.perform(post("/api/ai/game/next-move")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isGatewayTimeout())
+                .andExpect(jsonPath("$.message")
+                        .value("AI analysis timed out"));
+
+        verify(aiService)
+                .gameNextMove(any(AiGameNextMoveRequest.class));
     }
 }
