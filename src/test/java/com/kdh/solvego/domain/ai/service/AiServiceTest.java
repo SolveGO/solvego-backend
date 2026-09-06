@@ -14,6 +14,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import com.kdh.solvego.domain.ai.dto.AiGameNextMoveRequest;
+import com.kdh.solvego.domain.ai.dto.AiGameNextMoveResponse;
 
 import java.util.List;
 
@@ -139,5 +141,43 @@ class AiServiceTest {
                 .isEqualTo(expectedResponse);
 
         verify(aiClient).status();
+    }
+    @Test
+    @DisplayName("AI 대국 다음 수 요청에 성공하면 AiClient의 결과를 반환한다")
+    void gameNextMove_success() {
+        // given
+        AiGameNextMoveRequest request =
+                new AiGameNextMoveRequest(
+                        List.of(
+                                new AiGameNextMoveRequest.Move(
+                                        AiGameNextMoveRequest.Player.BLACK,
+                                        new Position(3, 15)
+                                ),
+                                new AiGameNextMoveRequest.Move(
+                                        AiGameNextMoveRequest.Player.WHITE,
+                                        null
+                                )
+                        )
+                );
+
+        AiGameNextMoveResponse expectedResponse =
+                new AiGameNextMoveResponse(
+                        new Position(4, 3),
+                        0.99,
+                        13.05
+                );
+
+        when(aiClient.gameNextMove(request))
+                .thenReturn(expectedResponse);
+
+        // when
+        AiGameNextMoveResponse response =
+                aiService.gameNextMove(request);
+
+        // then
+        assertThat(response)
+                .isEqualTo(expectedResponse);
+
+        verify(aiClient).gameNextMove(request);
     }
 }

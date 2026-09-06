@@ -3,6 +3,8 @@ package com.kdh.solvego.domain.ai.service;
 import com.kdh.solvego.domain.ai.client.AiClient;
 import com.kdh.solvego.domain.ai.dto.AiAnalyzeRequest;
 import com.kdh.solvego.domain.ai.dto.AiAnalyzeResponse;
+import com.kdh.solvego.domain.ai.dto.AiGameNextMoveRequest;
+import com.kdh.solvego.domain.ai.dto.AiGameNextMoveResponse;
 import com.kdh.solvego.domain.ai.dto.AiRecommendRequest;
 import com.kdh.solvego.domain.ai.dto.AiRecommendResponse;
 import com.kdh.solvego.domain.ai.dto.AiStatusResponse;
@@ -23,6 +25,10 @@ public class AiService {
 
     public AiAnalyzeResponse analyze(AiAnalyzeRequest request) {
         return aiClient.analyze(request);
+    }
+
+    public AiGameNextMoveResponse gameNextMove(AiGameNextMoveRequest request) {
+        return aiClient.gameNextMove(request);
     }
 
     public AiStatusResponse status() {

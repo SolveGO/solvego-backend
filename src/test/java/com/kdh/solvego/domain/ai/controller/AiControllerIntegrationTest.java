@@ -26,6 +26,7 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
+import com.kdh.solvego.domain.ai.dto.AiGameNextMoveRequest;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -61,6 +62,9 @@ class AiControllerIntegrationTest {
     private static int healthStatus;
     private static String healthBody;
 
+    private static int gameNextMoveStatus;
+    private static String gameNextMoveBody;
+
     @BeforeAll
     static void startAiServer() throws IOException {
         aiServer = HttpServer.create(
@@ -91,7 +95,13 @@ class AiControllerIntegrationTest {
                     healthBody
             );
         });
-
+        aiServer.createContext("/game/next-move", exchange -> {
+            respond(
+                    exchange,
+                    gameNextMoveStatus,
+                    gameNextMoveBody
+            );
+        });
         aiServer.start();
     }
 
@@ -146,6 +156,17 @@ class AiControllerIntegrationTest {
                   "status": "ok"
                 }
                 """;
+        gameNextMoveStatus = 200;
+        gameNextMoveBody = """
+        {
+          "move": {
+            "x": 4,
+            "y": 3
+          },
+          "winRate": 0.99,
+          "scoreLead": 13.05
+        }
+        """;
     }
 
     @Test
@@ -384,6 +405,122 @@ class AiControllerIntegrationTest {
                 .andExpect(
                         jsonPath("$.status").value("OFFLINE")
                 );
+    }
+
+    @Test
+    @DisplayName("JWT로 인증된 사용자는 AI 대국 다음 수를 조회할 수 있다")
+    void gameNextMove_success() throws Exception {
+        // given
+        String accessToken =
+                signupAndLogin("aiuser5", "1234");
+
+        AiGameNextMoveRequest request =
+                new AiGameNextMoveRequest(
+                        List.of(
+                                new AiGameNextMoveRequest.Move(
+                                        AiGameNextMoveRequest.Player.BLACK,
+                                        new Position(3, 15)
+                                ),
+                                new AiGameNextMoveRequest.Move(
+                                        AiGameNextMoveRequest.Player.WHITE,
+                                        new Position(15, 3)
+                                ),
+                                new AiGameNextMoveRequest.Move(
+                                        AiGameNextMoveRequest.Player.BLACK,
+                                        null
+                                )
+                        )
+                );
+
+        // when & then
+        mockMvc.perform(post("/api/ai/game/next-move")
+                        .header(
+                                HttpHeaders.AUTHORIZATION,
+                                bearer(accessToken)
+                        )
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(
+                                objectMapper.writeValueAsString(request)
+                        ))
+                .andExpect(status().isOk())
+                .andExpect(
+                        content().contentTypeCompatibleWith(
+                                MediaType.APPLICATION_JSON
+                        )
+                )
+                .andExpect(
+                        jsonPath("$.move.x").value(4)
+                )
+                .andExpect(
+                        jsonPath("$.move.y").value(3)
+                )
+                .andExpect(
+                        jsonPath("$.winRate").value(0.99)
+                )
+                .andExpect(
+                        jsonPath("$.scoreLead").value(13.05)
+                );
+    }
+    @Test
+    @DisplayName("AI 대국에서 AI가 PASS하면 move를 null로 반환한다")
+    void gameNextMove_success_when_ai_passes() throws Exception {
+        // given
+        String accessToken =
+                signupAndLogin("aiuser6", "1234");
+
+        gameNextMoveBody = """
+            {
+              "move": null,
+              "winRate": 0.82,
+              "scoreLead": 10.5
+            }
+            """;
+
+        AiGameNextMoveRequest request =
+                new AiGameNextMoveRequest(
+                        List.of(
+                                new AiGameNextMoveRequest.Move(
+                                        AiGameNextMoveRequest.Player.BLACK,
+                                        new Position(3, 15)
+                                )
+                        )
+                );
+
+        // when & then
+        mockMvc.perform(post("/api/ai/game/next-move")
+                        .header(
+                                HttpHeaders.AUTHORIZATION,
+                                bearer(accessToken)
+                        )
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(
+                                objectMapper.writeValueAsString(request)
+                        ))
+                .andExpect(status().isOk())
+                .andExpect(
+                        jsonPath("$.move").value((Object) null)
+                )
+                .andExpect(
+                        jsonPath("$.winRate").value(0.82)
+                )
+                .andExpect(
+                        jsonPath("$.scoreLead").value(10.5)
+                );
+    }
+    @Test
+    @DisplayName("JWT 없이 AI 대국 다음 수를 요청하면 401 Unauthorized를 반환한다")
+    void gameNextMove_fails_without_jwt() throws Exception {
+        // given
+        AiGameNextMoveRequest request =
+                new AiGameNextMoveRequest(List.of());
+
+        // when & then
+        mockMvc.perform(post("/api/ai/game/next-move")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(
+                                objectMapper.writeValueAsString(request)
+                        ))
+                .andExpect(status().isUnauthorized());
     }
 
     private String signupAndLogin(

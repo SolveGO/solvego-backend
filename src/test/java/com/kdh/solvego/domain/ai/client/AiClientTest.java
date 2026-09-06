@@ -17,7 +17,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
-
+import com.kdh.solvego.domain.ai.dto.AiGameNextMoveRequest;
+import com.kdh.solvego.domain.ai.dto.AiGameNextMoveResponse;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -439,6 +440,123 @@ class AiClientTest {
         // then
         assertThat(response.status())
                 .isEqualTo("OFFLINE");
+
+        mockServer.verify();
+    }
+    @Test
+    @DisplayName("AI 대국 다음 수 요청에 성공하면 AI의 착수와 분석 정보를 반환한다")
+    void gameNextMove_success() {
+        // given
+        AiGameNextMoveRequest request = new AiGameNextMoveRequest(
+                List.of(
+                        new AiGameNextMoveRequest.Move(
+                                AiGameNextMoveRequest.Player.BLACK,
+                                new Position(3, 15)
+                        ),
+                        new AiGameNextMoveRequest.Move(
+                                AiGameNextMoveRequest.Player.WHITE,
+                                new Position(15, 3)
+                        ),
+                        new AiGameNextMoveRequest.Move(
+                                AiGameNextMoveRequest.Player.BLACK,
+                                null
+                        )
+                )
+        );
+
+        mockServer.expect(requestTo("http://localhost:8000/game/next-move"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withSuccess(
+                        """
+                        {
+                          "move": {
+                            "x": 4,
+                            "y": 3
+                          },
+                          "winRate": 0.99,
+                          "scoreLead": 13.05
+                        }
+                        """,
+                        MediaType.APPLICATION_JSON
+                ));
+
+        // when
+        AiGameNextMoveResponse response =
+                aiClient.gameNextMove(request);
+
+        // then
+        assertThat(response.move())
+                .isEqualTo(new Position(4, 3));
+
+        assertThat(response.winRate())
+                .isEqualTo(0.99);
+
+        assertThat(response.scoreLead())
+                .isEqualTo(13.05);
+
+        mockServer.verify();
+    }
+
+
+    @Test
+    @DisplayName("AI 대국에서 AI가 PASS하면 move를 null로 역직렬화한다")
+    void gameNextMove_success_when_ai_passes() {
+        // given
+        AiGameNextMoveRequest request = new AiGameNextMoveRequest(
+                List.of(
+                        new AiGameNextMoveRequest.Move(
+                                AiGameNextMoveRequest.Player.BLACK,
+                                new Position(3, 15)
+                        )
+                )
+        );
+
+        mockServer.expect(requestTo("http://localhost:8000/game/next-move"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withSuccess(
+                        """
+                        {
+                          "move": null,
+                          "winRate": 0.82,
+                          "scoreLead": 10.5
+                        }
+                        """,
+                        MediaType.APPLICATION_JSON
+                ));
+
+        // when
+        AiGameNextMoveResponse response =
+                aiClient.gameNextMove(request);
+
+        // then
+        assertThat(response.move())
+                .isNull();
+
+        assertThat(response.winRate())
+                .isEqualTo(0.82);
+
+        assertThat(response.scoreLead())
+                .isEqualTo(10.5);
+
+        mockServer.verify();
+    }
+
+
+    @Test
+    @DisplayName("AI 대국 서버가 504를 반환하면 AiTimeoutException이 발생한다")
+    void gameNextMove_fails_when_ai_server_times_out() {
+        // given
+        AiGameNextMoveRequest request = new AiGameNextMoveRequest(
+                List.of()
+        );
+
+        mockServer.expect(requestTo("http://localhost:8000/game/next-move"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withStatus(HttpStatus.GATEWAY_TIMEOUT));
+
+        // when & then
+        assertThatThrownBy(() -> aiClient.gameNextMove(request))
+                .isInstanceOf(AiTimeoutException.class);
 
         mockServer.verify();
     }

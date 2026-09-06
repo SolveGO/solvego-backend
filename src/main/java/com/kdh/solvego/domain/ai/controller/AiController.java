@@ -2,8 +2,11 @@ package com.kdh.solvego.domain.ai.controller;
 
 import com.kdh.solvego.domain.ai.dto.AiAnalyzeRequest;
 import com.kdh.solvego.domain.ai.dto.AiAnalyzeResponse;
+import com.kdh.solvego.domain.ai.dto.AiGameNextMoveRequest;
+import com.kdh.solvego.domain.ai.dto.AiGameNextMoveResponse;
 import com.kdh.solvego.domain.ai.dto.AiRecommendRequest;
 import com.kdh.solvego.domain.ai.dto.AiRecommendResponse;
+import com.kdh.solvego.domain.ai.dto.AiStatusResponse;
 import com.kdh.solvego.domain.ai.service.AiService;
 import com.kdh.solvego.global.exception.ErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -13,7 +16,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import com.kdh.solvego.domain.ai.dto.AiStatusResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
@@ -137,6 +139,60 @@ public class AiController {
     ) {
         return aiService.analyze(request);
     }
+
+    @Operation(
+            summary = "AI 대국 다음 수 조회",
+            description = "현재까지의 대국 착수 기록을 기반으로 AI의 다음 수와 예상 승률 및 예상 집 차이를 반환합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "AI 대국 다음 수 조회 성공"
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "요청 형식 오류",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "인증되지 않은 사용자",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "502",
+                    description = "AI 서버 통신 오류",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "504",
+                    description = "AI 분석 시간 초과",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class)
+                    )
+            )
+    })
+    @SecurityRequirement(name = "bearerAuth")
+    @PostMapping(
+            value = "/game/next-move",
+            consumes = MediaType.APPLICATION_JSON_VALUE
+    )
+    public AiGameNextMoveResponse gameNextMove(
+            @Valid @RequestBody AiGameNextMoveRequest request
+    ) {
+        return aiService.gameNextMove(request);
+    }
+
     @Operation(
             summary = "AI 서버 상태 조회",
             description = "AI 서버의 현재 연결 상태를 반환합니다."
