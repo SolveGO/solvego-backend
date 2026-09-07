@@ -2,8 +2,11 @@ package com.kdh.solvego.domain.ai.client;
 
 import com.kdh.solvego.domain.ai.dto.AiAnalyzeRequest;
 import com.kdh.solvego.domain.ai.dto.AiAnalyzeResponse;
+import com.kdh.solvego.domain.ai.dto.AiGameNextMoveAiResponse;
+import com.kdh.solvego.domain.ai.dto.AiGameNextMoveRequest;
 import com.kdh.solvego.domain.ai.dto.AiRecommendRequest;
 import com.kdh.solvego.domain.ai.dto.AiRecommendResponse;
+import com.kdh.solvego.domain.ai.dto.AiStatusResponse;
 import com.kdh.solvego.domain.ai.exception.AiServerException;
 import com.kdh.solvego.domain.ai.exception.AiTimeoutException;
 import org.springframework.beans.factory.annotation.Value;
@@ -12,9 +15,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
-import com.kdh.solvego.domain.ai.dto.AiStatusResponse;
-import com.kdh.solvego.domain.ai.dto.AiGameNextMoveRequest;
-import com.kdh.solvego.domain.ai.dto.AiGameNextMoveResponse;
 
 @Component
 public class AiClient {
@@ -69,13 +69,16 @@ public class AiClient {
             throw new AiServerException();
         }
     }
-    public AiGameNextMoveResponse gameNextMove(AiGameNextMoveRequest request) {
+
+    public AiGameNextMoveAiResponse gameNextMove(
+            AiGameNextMoveRequest request
+    ) {
         try {
             return restClient.post()
                     .uri("/game/next-move")
                     .body(request)
                     .retrieve()
-                    .body(AiGameNextMoveResponse.class);
+                    .body(AiGameNextMoveAiResponse.class);
 
         } catch (RestClientResponseException e) {
             if (e.getStatusCode() == HttpStatus.GATEWAY_TIMEOUT) {
@@ -88,6 +91,7 @@ public class AiClient {
             throw new AiServerException();
         }
     }
+
     public AiStatusResponse status() {
         try {
             restClient.get()

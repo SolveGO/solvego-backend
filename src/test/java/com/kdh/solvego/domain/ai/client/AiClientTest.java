@@ -2,11 +2,15 @@ package com.kdh.solvego.domain.ai.client;
 
 import com.kdh.solvego.domain.ai.dto.AiAnalyzeRequest;
 import com.kdh.solvego.domain.ai.dto.AiAnalyzeResponse;
+import com.kdh.solvego.domain.ai.dto.AiGameNextMoveAiResponse;
+import com.kdh.solvego.domain.ai.dto.AiGameNextMoveRequest;
 import com.kdh.solvego.domain.ai.dto.AiRecommendRequest;
 import com.kdh.solvego.domain.ai.dto.AiRecommendResponse;
 import com.kdh.solvego.domain.ai.dto.AiStatusResponse;
 import com.kdh.solvego.domain.ai.exception.AiServerException;
 import com.kdh.solvego.domain.ai.exception.AiTimeoutException;
+import com.kdh.solvego.domain.ai.type.MoveType;
+import com.kdh.solvego.domain.ai.type.Player;
 import com.kdh.solvego.domain.common.vo.Position;
 import com.kdh.solvego.domain.problem.entity.PlayerColor;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,8 +21,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
-import com.kdh.solvego.domain.ai.dto.AiGameNextMoveRequest;
-import com.kdh.solvego.domain.ai.dto.AiGameNextMoveResponse;
+
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -443,6 +446,7 @@ class AiClientTest {
 
         mockServer.verify();
     }
+
     @Test
     @DisplayName("AI 대국 다음 수 요청에 성공하면 AI의 착수와 분석 정보를 반환한다")
     void gameNextMove_success() {
@@ -450,15 +454,18 @@ class AiClientTest {
         AiGameNextMoveRequest request = new AiGameNextMoveRequest(
                 List.of(
                         new AiGameNextMoveRequest.Move(
-                                AiGameNextMoveRequest.Player.BLACK,
+                                Player.BLACK,
+                                MoveType.PLAY,
                                 new Position(3, 15)
                         ),
                         new AiGameNextMoveRequest.Move(
-                                AiGameNextMoveRequest.Player.WHITE,
+                                Player.WHITE,
+                                MoveType.PLAY,
                                 new Position(15, 3)
                         ),
                         new AiGameNextMoveRequest.Move(
-                                AiGameNextMoveRequest.Player.BLACK,
+                                Player.BLACK,
+                                MoveType.PASS,
                                 null
                         )
                 )
@@ -469,6 +476,7 @@ class AiClientTest {
                 .andRespond(withSuccess(
                         """
                         {
+                          "moveType": "PLAY",
                           "move": {
                             "x": 4,
                             "y": 3
@@ -481,10 +489,13 @@ class AiClientTest {
                 ));
 
         // when
-        AiGameNextMoveResponse response =
+        AiGameNextMoveAiResponse response =
                 aiClient.gameNextMove(request);
 
         // then
+        assertThat(response.moveType())
+                .isEqualTo(MoveType.PLAY);
+
         assertThat(response.move())
                 .isEqualTo(new Position(4, 3));
 
@@ -497,15 +508,15 @@ class AiClientTest {
         mockServer.verify();
     }
 
-
     @Test
-    @DisplayName("AI 대국에서 AI가 PASS하면 move를 null로 역직렬화한다")
+    @DisplayName("AI 대국에서 AI가 PASS하면 moveType은 PASS이고 move는 null이다")
     void gameNextMove_success_when_ai_passes() {
         // given
         AiGameNextMoveRequest request = new AiGameNextMoveRequest(
                 List.of(
                         new AiGameNextMoveRequest.Move(
-                                AiGameNextMoveRequest.Player.BLACK,
+                                Player.BLACK,
+                                MoveType.PLAY,
                                 new Position(3, 15)
                         )
                 )
@@ -516,6 +527,7 @@ class AiClientTest {
                 .andRespond(withSuccess(
                         """
                         {
+                          "moveType": "PASS",
                           "move": null,
                           "winRate": 0.82,
                           "scoreLead": 10.5
@@ -525,10 +537,13 @@ class AiClientTest {
                 ));
 
         // when
-        AiGameNextMoveResponse response =
+        AiGameNextMoveAiResponse response =
                 aiClient.gameNextMove(request);
 
         // then
+        assertThat(response.moveType())
+                .isEqualTo(MoveType.PASS);
+
         assertThat(response.move())
                 .isNull();
 
@@ -540,7 +555,6 @@ class AiClientTest {
 
         mockServer.verify();
     }
-
 
     @Test
     @DisplayName("AI 대국 서버가 504를 반환하면 AiTimeoutException이 발생한다")

@@ -3,7 +3,10 @@ package com.kdh.solvego.domain.ai.controller;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kdh.solvego.domain.ai.dto.AiAnalyzeRequest;
+import com.kdh.solvego.domain.ai.dto.AiGameNextMoveRequest;
 import com.kdh.solvego.domain.ai.dto.AiRecommendRequest;
+import com.kdh.solvego.domain.ai.type.MoveType;
+import com.kdh.solvego.domain.ai.type.Player;
 import com.kdh.solvego.domain.auth.dto.LoginRequest;
 import com.kdh.solvego.domain.common.vo.Position;
 import com.kdh.solvego.domain.problem.entity.PlayerColor;
@@ -26,7 +29,6 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
-import com.kdh.solvego.domain.ai.dto.AiGameNextMoveRequest;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -37,7 +39,9 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -95,6 +99,7 @@ class AiControllerIntegrationTest {
                     healthBody
             );
         });
+
         aiServer.createContext("/game/next-move", exchange -> {
             respond(
                     exchange,
@@ -102,6 +107,7 @@ class AiControllerIntegrationTest {
                     gameNextMoveBody
             );
         });
+
         aiServer.start();
     }
 
@@ -156,17 +162,19 @@ class AiControllerIntegrationTest {
                   "status": "ok"
                 }
                 """;
+
         gameNextMoveStatus = 200;
         gameNextMoveBody = """
-        {
-          "move": {
-            "x": 4,
-            "y": 3
-          },
-          "winRate": 0.99,
-          "scoreLead": 13.05
-        }
-        """;
+                {
+                  "moveType": "PLAY",
+                  "move": {
+                    "x": 4,
+                    "y": 3
+                  },
+                  "winRate": 0.99,
+                  "scoreLead": 13.05
+                }
+                """;
     }
 
     @Test
@@ -418,15 +426,18 @@ class AiControllerIntegrationTest {
                 new AiGameNextMoveRequest(
                         List.of(
                                 new AiGameNextMoveRequest.Move(
-                                        AiGameNextMoveRequest.Player.BLACK,
+                                        Player.BLACK,
+                                        MoveType.PLAY,
                                         new Position(3, 15)
                                 ),
                                 new AiGameNextMoveRequest.Move(
-                                        AiGameNextMoveRequest.Player.WHITE,
+                                        Player.WHITE,
+                                        MoveType.PLAY,
                                         new Position(15, 3)
                                 ),
                                 new AiGameNextMoveRequest.Move(
-                                        AiGameNextMoveRequest.Player.BLACK,
+                                        Player.BLACK,
+                                        MoveType.PASS,
                                         null
                                 )
                         )
@@ -449,6 +460,9 @@ class AiControllerIntegrationTest {
                         )
                 )
                 .andExpect(
+                        jsonPath("$.moveType").value("PLAY")
+                )
+                .andExpect(
                         jsonPath("$.move.x").value(4)
                 )
                 .andExpect(
@@ -459,28 +473,40 @@ class AiControllerIntegrationTest {
                 )
                 .andExpect(
                         jsonPath("$.scoreLead").value(13.05)
+                )
+                .andExpect(
+                        jsonPath("$.gameEnded").value(false)
+                )
+                .andExpect(
+                        jsonPath("$.result").doesNotExist()
+                )
+                .andExpect(
+                        jsonPath("$.endReason").doesNotExist()
                 );
     }
+
     @Test
-    @DisplayName("AI 대국에서 AI가 PASS하면 move를 null로 반환한다")
+    @DisplayName("AI 대국에서 AI가 PASS해도 연속 PASS가 아니면 대국을 계속한다")
     void gameNextMove_success_when_ai_passes() throws Exception {
         // given
         String accessToken =
                 signupAndLogin("aiuser6", "1234");
 
         gameNextMoveBody = """
-            {
-              "move": null,
-              "winRate": 0.82,
-              "scoreLead": 10.5
-            }
-            """;
+                {
+                  "moveType": "PASS",
+                  "move": null,
+                  "winRate": 0.82,
+                  "scoreLead": 10.5
+                }
+                """;
 
         AiGameNextMoveRequest request =
                 new AiGameNextMoveRequest(
                         List.of(
                                 new AiGameNextMoveRequest.Move(
-                                        AiGameNextMoveRequest.Player.BLACK,
+                                        Player.BLACK,
+                                        MoveType.PLAY,
                                         new Position(3, 15)
                                 )
                         )
@@ -498,6 +524,9 @@ class AiControllerIntegrationTest {
                         ))
                 .andExpect(status().isOk())
                 .andExpect(
+                        jsonPath("$.moveType").value("PASS")
+                )
+                .andExpect(
                         jsonPath("$.move").value((Object) null)
                 )
                 .andExpect(
@@ -505,8 +534,143 @@ class AiControllerIntegrationTest {
                 )
                 .andExpect(
                         jsonPath("$.scoreLead").value(10.5)
+                )
+                .andExpect(
+                        jsonPath("$.gameEnded").value(false)
+                )
+                .andExpect(
+                        jsonPath("$.result").doesNotExist()
+                )
+                .andExpect(
+                        jsonPath("$.endReason").doesNotExist()
                 );
     }
+
+    @Test
+    @DisplayName("사용자와 AI가 연속으로 PASS하면 scoreLead에 따라 대국을 종료한다")
+    void gameNextMove_doublePass_aiWin() throws Exception {
+        // given
+        String accessToken =
+                signupAndLogin("aiuser7", "1234");
+
+        gameNextMoveBody = """
+                {
+                  "moveType": "PASS",
+                  "move": null,
+                  "winRate": 0.80,
+                  "scoreLead": 5.5
+                }
+                """;
+
+        AiGameNextMoveRequest request =
+                new AiGameNextMoveRequest(
+                        List.of(
+                                new AiGameNextMoveRequest.Move(
+                                        Player.BLACK,
+                                        MoveType.PASS,
+                                        null
+                                )
+                        )
+                );
+
+        // when & then
+        mockMvc.perform(post("/api/ai/game/next-move")
+                        .header(
+                                HttpHeaders.AUTHORIZATION,
+                                bearer(accessToken)
+                        )
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(
+                                objectMapper.writeValueAsString(request)
+                        ))
+                .andExpect(status().isOk())
+                .andExpect(
+                        jsonPath("$.moveType").value("PASS")
+                )
+                .andExpect(
+                        jsonPath("$.move").value((Object) null)
+                )
+                .andExpect(
+                        jsonPath("$.winRate").value(0.80)
+                )
+                .andExpect(
+                        jsonPath("$.scoreLead").value(5.5)
+                )
+                .andExpect(
+                        jsonPath("$.gameEnded").value(true)
+                )
+                .andExpect(
+                        jsonPath("$.result").value("AI_WIN")
+                )
+                .andExpect(
+                        jsonPath("$.endReason").value("DOUBLE_PASS")
+                );
+    }
+
+    @Test
+    @DisplayName("AI 승률이 10% 이하이면 AI가 기권하고 사용자가 승리한다")
+    void gameNextMove_aiResign() throws Exception {
+        // given
+        String accessToken =
+                signupAndLogin("aiuser8", "1234");
+
+        gameNextMoveBody = """
+                {
+                  "moveType": "PLAY",
+                  "move": {
+                    "x": 4,
+                    "y": 3
+                  },
+                  "winRate": 0.10,
+                  "scoreLead": -15.0
+                }
+                """;
+
+        AiGameNextMoveRequest request =
+                new AiGameNextMoveRequest(
+                        List.of(
+                                new AiGameNextMoveRequest.Move(
+                                        Player.BLACK,
+                                        MoveType.PLAY,
+                                        new Position(3, 15)
+                                )
+                        )
+                );
+
+        // when & then
+        mockMvc.perform(post("/api/ai/game/next-move")
+                        .header(
+                                HttpHeaders.AUTHORIZATION,
+                                bearer(accessToken)
+                        )
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(
+                                objectMapper.writeValueAsString(request)
+                        ))
+                .andExpect(status().isOk())
+                .andExpect(
+                        jsonPath("$.moveType").value((Object) null)
+                )
+                .andExpect(
+                        jsonPath("$.move").value((Object) null)
+                )
+                .andExpect(
+                        jsonPath("$.winRate").value(0.10)
+                )
+                .andExpect(
+                        jsonPath("$.scoreLead").value(-15.0)
+                )
+                .andExpect(
+                        jsonPath("$.gameEnded").value(true)
+                )
+                .andExpect(
+                        jsonPath("$.result").value("PLAYER_WIN")
+                )
+                .andExpect(
+                        jsonPath("$.endReason").value("AI_RESIGN")
+                );
+    }
+
     @Test
     @DisplayName("JWT 없이 AI 대국 다음 수를 요청하면 401 Unauthorized를 반환한다")
     void gameNextMove_fails_without_jwt() throws Exception {
