@@ -3,9 +3,16 @@ package com.kdh.solvego.domain.ai.service;
 import com.kdh.solvego.domain.ai.client.AiClient;
 import com.kdh.solvego.domain.ai.dto.AiAnalyzeRequest;
 import com.kdh.solvego.domain.ai.dto.AiAnalyzeResponse;
+import com.kdh.solvego.domain.ai.dto.AiGameNextMoveAiResponse;
+import com.kdh.solvego.domain.ai.dto.AiGameNextMoveRequest;
+import com.kdh.solvego.domain.ai.dto.AiGameNextMoveResponse;
 import com.kdh.solvego.domain.ai.dto.AiRecommendRequest;
 import com.kdh.solvego.domain.ai.dto.AiRecommendResponse;
 import com.kdh.solvego.domain.ai.dto.AiStatusResponse;
+import com.kdh.solvego.domain.ai.type.GameEndReason;
+import com.kdh.solvego.domain.ai.type.GameResult;
+import com.kdh.solvego.domain.ai.type.MoveType;
+import com.kdh.solvego.domain.ai.type.Player;
 import com.kdh.solvego.domain.common.vo.Position;
 import com.kdh.solvego.domain.problem.entity.PlayerColor;
 import org.junit.jupiter.api.DisplayName;
@@ -14,8 +21,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import com.kdh.solvego.domain.ai.dto.AiGameNextMoveRequest;
-import com.kdh.solvego.domain.ai.dto.AiGameNextMoveResponse;
 
 import java.util.List;
 
@@ -142,41 +147,244 @@ class AiServiceTest {
 
         verify(aiClient).status();
     }
+
     @Test
-    @DisplayName("AI 대국 다음 수 요청에 성공하면 AiClient의 결과를 반환한다")
-    void gameNextMove_success() {
+    @DisplayName("일반적인 AI 착수이면 대국을 계속한다")
+    void gameNextMove_continue() {
         // given
         AiGameNextMoveRequest request =
                 new AiGameNextMoveRequest(
                         List.of(
                                 new AiGameNextMoveRequest.Move(
-                                        AiGameNextMoveRequest.Player.BLACK,
+                                        Player.BLACK,
+                                        MoveType.PLAY,
                                         new Position(3, 15)
-                                ),
-                                new AiGameNextMoveRequest.Move(
-                                        AiGameNextMoveRequest.Player.WHITE,
-                                        null
                                 )
                         )
                 );
 
-        AiGameNextMoveResponse expectedResponse =
-                new AiGameNextMoveResponse(
-                        new Position(4, 3),
+        Position aiMove = new Position(4, 3);
+
+        AiGameNextMoveAiResponse aiResponse =
+                new AiGameNextMoveAiResponse(
+                        MoveType.PLAY,
+                        aiMove,
                         0.99,
                         13.05
                 );
 
         when(aiClient.gameNextMove(request))
-                .thenReturn(expectedResponse);
+                .thenReturn(aiResponse);
 
         // when
         AiGameNextMoveResponse response =
                 aiService.gameNextMove(request);
 
         // then
-        assertThat(response)
-                .isEqualTo(expectedResponse);
+        assertThat(response.moveType())
+                .isEqualTo(MoveType.PLAY);
+
+        assertThat(response.move())
+                .isEqualTo(aiMove);
+
+        assertThat(response.winRate())
+                .isEqualTo(0.99);
+
+        assertThat(response.scoreLead())
+                .isEqualTo(13.05);
+
+        assertThat(response.gameEnded())
+                .isFalse();
+
+        assertThat(response.result())
+                .isNull();
+
+        assertThat(response.endReason())
+                .isNull();
+
+        verify(aiClient).gameNextMove(request);
+    }
+
+    @Test
+    @DisplayName("사용자와 AI가 연속으로 PASS하면 AI 승리로 대국을 종료한다")
+    void gameNextMove_doublePass_aiWin() {
+        // given
+        AiGameNextMoveRequest request =
+                new AiGameNextMoveRequest(
+                        List.of(
+                                new AiGameNextMoveRequest.Move(
+                                        Player.BLACK,
+                                        MoveType.PASS,
+                                        null
+                                )
+                        )
+                );
+
+        AiGameNextMoveAiResponse aiResponse =
+                new AiGameNextMoveAiResponse(
+                        MoveType.PASS,
+                        null,
+                        0.80,
+                        5.5
+                );
+
+        when(aiClient.gameNextMove(request))
+                .thenReturn(aiResponse);
+
+        // when
+        AiGameNextMoveResponse response =
+                aiService.gameNextMove(request);
+
+        // then
+        assertThat(response.gameEnded())
+                .isTrue();
+
+        assertThat(response.result())
+                .isEqualTo(GameResult.AI_WIN);
+
+        assertThat(response.endReason())
+                .isEqualTo(GameEndReason.DOUBLE_PASS);
+
+        assertThat(response.moveType())
+                .isEqualTo(MoveType.PASS);
+
+        assertThat(response.move())
+                .isNull();
+
+        verify(aiClient).gameNextMove(request);
+    }
+
+    @Test
+    @DisplayName("연속 PASS 종료 시 scoreLead가 음수이면 사용자 승리이다")
+    void gameNextMove_doublePass_playerWin() {
+        // given
+        AiGameNextMoveRequest request =
+                new AiGameNextMoveRequest(
+                        List.of(
+                                new AiGameNextMoveRequest.Move(
+                                        Player.BLACK,
+                                        MoveType.PASS,
+                                        null
+                                )
+                        )
+                );
+
+        AiGameNextMoveAiResponse aiResponse =
+                new AiGameNextMoveAiResponse(
+                        MoveType.PASS,
+                        null,
+                        0.20,
+                        -7.5
+                );
+
+        when(aiClient.gameNextMove(request))
+                .thenReturn(aiResponse);
+
+        // when
+        AiGameNextMoveResponse response =
+                aiService.gameNextMove(request);
+
+        // then
+        assertThat(response.gameEnded())
+                .isTrue();
+
+        assertThat(response.result())
+                .isEqualTo(GameResult.PLAYER_WIN);
+
+        assertThat(response.endReason())
+                .isEqualTo(GameEndReason.DOUBLE_PASS);
+
+        verify(aiClient).gameNextMove(request);
+    }
+
+    @Test
+    @DisplayName("연속 PASS 종료 시 scoreLead가 0이면 무승부이다")
+    void gameNextMove_doublePass_draw() {
+        // given
+        AiGameNextMoveRequest request =
+                new AiGameNextMoveRequest(
+                        List.of(
+                                new AiGameNextMoveRequest.Move(
+                                        Player.BLACK,
+                                        MoveType.PASS,
+                                        null
+                                )
+                        )
+                );
+
+        AiGameNextMoveAiResponse aiResponse =
+                new AiGameNextMoveAiResponse(
+                        MoveType.PASS,
+                        null,
+                        0.50,
+                        0.0
+                );
+
+        when(aiClient.gameNextMove(request))
+                .thenReturn(aiResponse);
+
+        // when
+        AiGameNextMoveResponse response =
+                aiService.gameNextMove(request);
+
+        // then
+        assertThat(response.gameEnded())
+                .isTrue();
+
+        assertThat(response.result())
+                .isEqualTo(GameResult.DRAW);
+
+        assertThat(response.endReason())
+                .isEqualTo(GameEndReason.DOUBLE_PASS);
+
+        verify(aiClient).gameNextMove(request);
+    }
+
+    @Test
+    @DisplayName("AI 승률이 10% 이하이면 AI가 기권하고 사용자가 승리한다")
+    void gameNextMove_aiResign() {
+        // given
+        AiGameNextMoveRequest request =
+                new AiGameNextMoveRequest(
+                        List.of(
+                                new AiGameNextMoveRequest.Move(
+                                        Player.BLACK,
+                                        MoveType.PLAY,
+                                        new Position(3, 15)
+                                )
+                        )
+                );
+
+        AiGameNextMoveAiResponse aiResponse =
+                new AiGameNextMoveAiResponse(
+                        MoveType.PLAY,
+                        new Position(4, 3),
+                        0.10,
+                        -15.0
+                );
+
+        when(aiClient.gameNextMove(request))
+                .thenReturn(aiResponse);
+
+        // when
+        AiGameNextMoveResponse response =
+                aiService.gameNextMove(request);
+
+        // then
+        assertThat(response.gameEnded())
+                .isTrue();
+
+        assertThat(response.result())
+                .isEqualTo(GameResult.PLAYER_WIN);
+
+        assertThat(response.endReason())
+                .isEqualTo(GameEndReason.AI_RESIGN);
+
+        assertThat(response.moveType())
+                .isNull();
+
+        assertThat(response.move())
+                .isNull();
 
         verify(aiClient).gameNextMove(request);
     }

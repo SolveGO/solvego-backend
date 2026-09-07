@@ -142,7 +142,7 @@ public class AiController {
 
     @Operation(
             summary = "AI 대국 다음 수 조회",
-            description = "현재까지의 대국 착수 기록을 기반으로 AI의 다음 수와 예상 승률 및 예상 집 차이를 반환합니다."
+            description = "현재까지의 대국 착수 기록을 기반으로 AI의 다음 수, 예상 승률, 예상 집 차이를 반환하며, 대국이 종료된 경우 종료 여부와 결과 및 종료 사유를 함께 반환합니다."
     )
     @ApiResponses({
             @ApiResponse(
