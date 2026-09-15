@@ -43,7 +43,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String token = authorizationHeader.substring("Bearer ".length());
 
-        if (jwtTokenProvider.validateToken(token)) {
+        try {
             Long userId = jwtTokenProvider.getUserId(token);
 
             UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
@@ -52,6 +52,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     List.of()
             );
             SecurityContextHolder.getContext().setAuthentication(authentication);
+        } catch (RuntimeException e) {
+            // Parse once so expiration between two parses cannot escape as a server error.
+            SecurityContextHolder.clearContext();
         }
 
         filterChain.doFilter(request, response);

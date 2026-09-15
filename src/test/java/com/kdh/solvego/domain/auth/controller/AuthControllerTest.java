@@ -2,7 +2,7 @@ package com.kdh.solvego.domain.auth.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kdh.solvego.domain.auth.dto.LoginRequest;
-import com.kdh.solvego.domain.auth.dto.LoginResponse;
+import com.kdh.solvego.domain.auth.dto.AuthTokens;
 import com.kdh.solvego.domain.auth.exception.InvalidLoginException;
 import com.kdh.solvego.domain.auth.service.AuthService;
 import com.kdh.solvego.global.security.jwt.JwtTokenProvider;
@@ -22,6 +22,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+@org.springframework.context.annotation.Import(RefreshCookie.class)
 @WebMvcTest(AuthController.class)
 @AutoConfigureMockMvc(addFilters = false)
 class AuthControllerTest {
@@ -45,10 +46,10 @@ class AuthControllerTest {
         LoginRequest request = new LoginRequest("username", "1234");
 
         when(authService.login(any(LoginRequest.class)))
-                .thenReturn(new LoginResponse("access-token"));
+                .thenReturn(new AuthTokens("access-token", "a".repeat(43)));
 
         // when & then
-        mockMvc.perform(post("/api/auth/login")
+        mockMvc.perform(post("/api/auth/login").header("Origin", "http://localhost:5173").header("X-SolveGO-CSRF", "1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -65,7 +66,7 @@ class AuthControllerTest {
         LoginRequest request = new LoginRequest("", "1234");
 
         // when & then
-        mockMvc.perform(post("/api/auth/login")
+        mockMvc.perform(post("/api/auth/login").header("Origin", "http://localhost:5173").header("X-SolveGO-CSRF", "1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
@@ -83,7 +84,7 @@ class AuthControllerTest {
                 .thenThrow(new InvalidLoginException());
 
         // when & then
-        mockMvc.perform(post("/api/auth/login")
+        mockMvc.perform(post("/api/auth/login").header("Origin", "http://localhost:5173").header("X-SolveGO-CSRF", "1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized());

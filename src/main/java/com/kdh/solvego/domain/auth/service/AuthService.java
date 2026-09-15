@@ -2,6 +2,7 @@ package com.kdh.solvego.domain.auth.service;
 
 import com.kdh.solvego.domain.auth.dto.LoginRequest;
 import com.kdh.solvego.domain.auth.dto.LoginResponse;
+import com.kdh.solvego.domain.auth.dto.AuthTokens;
 import com.kdh.solvego.domain.auth.exception.InvalidLoginException;
 import com.kdh.solvego.domain.user.entity.User;
 import com.kdh.solvego.domain.user.repository.UserRepository;
@@ -15,13 +16,16 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
 
-    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtTokenProvider jwtTokenProvider) {
+    private final RefreshSessionService refreshSessions;
+
+    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtTokenProvider jwtTokenProvider, RefreshSessionService refreshSessions) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenProvider = jwtTokenProvider;
+        this.refreshSessions = refreshSessions;
     }
 
-    public LoginResponse login(LoginRequest request) {
+    public AuthTokens login(LoginRequest request) {
         User user = userRepository.findByUsername(request.username())
                 .orElseThrow(InvalidLoginException::new);
 
@@ -33,7 +37,13 @@ public class AuthService {
         }
 
         String accessToken= jwtTokenProvider.createToken(user.getId());
-        return new LoginResponse(accessToken);
+        return new AuthTokens(accessToken, refreshSessions.create(user.getId()));
     }
 
+    public LoginResponse refresh(String token) {
+        long userId = refreshSessions.validate(token);
+        return new LoginResponse(jwtTokenProvider.createToken(userId));
+    }
+
+    public void logout(String token) { refreshSessions.revoke(token); }
 }
