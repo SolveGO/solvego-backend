@@ -17,13 +17,40 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.net.URI;
 import java.util.List;
+import java.util.Arrays;
+import java.util.Set;
+import java.util.stream.Collectors;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.web.filter.CorsFilter;
 
 @Configuration
 public class SecurityConfig {
 
     @Value("${cors.allowed-origins}")
     private String allowedOrigins;
+
+    private Set<String> origins() {
+        Set<String> origins = Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim).filter(value -> !value.isEmpty()).collect(Collectors.toSet());
+        if (origins.isEmpty() || origins.stream().anyMatch(value -> !isOrigin(value))) {
+            throw new IllegalArgumentException("Explicit CORS origins are required");
+        }
+        return origins;
+    }
+
+    private boolean isOrigin(String value) {
+        try {
+            URI uri = URI.create(value);
+            return ("http".equals(uri.getScheme()) || "https".equals(uri.getScheme()))
+                    && uri.getHost() != null && !value.contains("*")
+                    && uri.getRawUserInfo() == null && uri.getRawQuery() == null
+                    && uri.getRawFragment() == null && uri.getRawPath().isEmpty();
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+    }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -34,12 +61,13 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(
-                List.of(allowedOrigins.split(","))
+                List.copyOf(origins())
         );
         configuration.setAllowedMethods(
                 List.of("GET", "POST", "PUT", "DELETE", "OPTIONS")
         );
-        configuration.setAllowedHeaders(List.of("*"));
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-SolveGO-CSRF"));
+        configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source =
                 new UrlBasedCorsConfigurationSource();
@@ -59,7 +87,12 @@ public class SecurityConfig {
                 .cors(cors ->
                         cors.configurationSource(corsConfigurationSource)
                 )
+                // Cookie endpoints are protected by AuthCsrfFilter; API authentication is Bearer-only.
                 .csrf(csrf -> csrf.disable())
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .requestCache(cache -> cache.disable())
+                .logout(logout -> logout.disable())
+                .addFilterAfter(new AuthCsrfFilter(origins()), CorsFilter.class)
                 .httpBasic(httpBasic -> httpBasic.disable())
                 .formLogin(formLogin -> formLogin.disable())
                 .exceptionHandling(ex -> ex
@@ -69,7 +102,7 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/api/users").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/refresh", "/api/auth/logout").permitAll()
                         .requestMatchers(HttpMethod.GET,"/api/problems").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/problems/*").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/ai/status").permitAll()
