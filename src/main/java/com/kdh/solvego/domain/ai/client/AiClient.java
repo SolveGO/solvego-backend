@@ -4,6 +4,8 @@ import com.kdh.solvego.domain.ai.dto.AiAnalyzeRequest;
 import com.kdh.solvego.domain.ai.dto.AiAnalyzeResponse;
 import com.kdh.solvego.domain.ai.dto.AiGameNextMoveAiResponse;
 import com.kdh.solvego.domain.ai.dto.AiGameNextMoveRequest;
+import com.kdh.solvego.domain.ai.dto.AiExplanationRequest;
+import com.kdh.solvego.domain.ai.dto.AiExplanationResponse;
 import com.kdh.solvego.domain.ai.dto.AiRecommendRequest;
 import com.kdh.solvego.domain.ai.dto.AiRecommendResponse;
 import com.kdh.solvego.domain.ai.dto.AiStatusResponse;
@@ -87,6 +89,23 @@ public class AiClient {
 
             throw new AiServerException();
 
+        } catch (ResourceAccessException e) {
+            throw new AiServerException();
+        }
+    }
+
+    public AiExplanationResponse explain(AiExplanationRequest request) {
+        try {
+            return restClient.post()
+                    .uri("/game/explanation")
+                    .body(request)
+                    .retrieve()
+                    .body(AiExplanationResponse.class);
+        } catch (RestClientResponseException e) {
+            if (e.getStatusCode() == HttpStatus.GATEWAY_TIMEOUT) {
+                throw new AiTimeoutException();
+            }
+            throw new AiServerException();
         } catch (ResourceAccessException e) {
             throw new AiServerException();
         }

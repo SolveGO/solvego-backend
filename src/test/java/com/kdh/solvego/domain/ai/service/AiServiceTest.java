@@ -6,6 +6,7 @@ import com.kdh.solvego.domain.ai.dto.AiAnalyzeResponse;
 import com.kdh.solvego.domain.ai.dto.AiGameNextMoveAiResponse;
 import com.kdh.solvego.domain.ai.dto.AiGameNextMoveRequest;
 import com.kdh.solvego.domain.ai.dto.AiGameNextMoveResponse;
+import com.kdh.solvego.domain.ai.dto.AiGameCandidate;
 import com.kdh.solvego.domain.ai.dto.AiRecommendRequest;
 import com.kdh.solvego.domain.ai.dto.AiRecommendResponse;
 import com.kdh.solvego.domain.ai.dto.AiStatusResponse;
@@ -164,13 +165,19 @@ class AiServiceTest {
                 );
 
         Position aiMove = new Position(4, 3);
+        AiGameCandidate candidate = new AiGameCandidate(
+                "c1", 1, MoveType.PLAY, aiMove, 0.99, 13.05,
+                5, List.of(aiMove)
+        );
 
         AiGameNextMoveAiResponse aiResponse =
                 new AiGameNextMoveAiResponse(
                         MoveType.PLAY,
                         aiMove,
                         0.99,
-                        13.05
+                        13.05,
+                        List.of(candidate),
+                        "signed-evidence"
                 );
 
         when(aiClient.gameNextMove(request))
@@ -192,6 +199,9 @@ class AiServiceTest {
 
         assertThat(response.scoreLead())
                 .isEqualTo(13.05);
+
+        assertThat(response.candidates()).containsExactly(candidate);
+        assertThat(response.evidenceToken()).isEqualTo("signed-evidence");
 
         assertThat(response.gameEnded())
                 .isFalse();
