@@ -5,6 +5,8 @@ import com.kdh.solvego.domain.ai.dto.AiAnalyzeRequest;
 import com.kdh.solvego.domain.ai.dto.AiAnalyzeResponse;
 import com.kdh.solvego.domain.ai.dto.AiGameNextMoveRequest;
 import com.kdh.solvego.domain.ai.dto.AiGameNextMoveResponse;
+import com.kdh.solvego.domain.ai.dto.AiExplanationRequest;
+import com.kdh.solvego.domain.ai.dto.AiExplanationResponse;
 import com.kdh.solvego.domain.ai.dto.AiRecommendRequest;
 import com.kdh.solvego.domain.ai.dto.AiRecommendResponse;
 import com.kdh.solvego.domain.ai.dto.AiStatusResponse;
@@ -576,5 +578,30 @@ class AiControllerTest {
 
         verify(aiService)
                 .gameNextMove(any(AiGameNextMoveRequest.class));
+    }
+
+    @Test
+    @DisplayName("서명된 근거 토큰으로 AI 착수 해설을 반환한다")
+    void explain_success() throws Exception {
+        AiExplanationRequest request = new AiExplanationRequest("signed-evidence");
+        AiExplanationResponse response = new AiExplanationResponse(
+                "TEMPLATE",
+                Player.WHITE,
+                List.of(),
+                new AiExplanationResponse.Explanation(
+                        "요약", "비교", "예상 진행", "낮은 탐색량", List.of("c1")
+                )
+        );
+        when(aiService.explain(request)).thenReturn(response);
+
+        mockMvc.perform(post("/api/ai/game/explanation")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.source").value("TEMPLATE"))
+                .andExpect(jsonPath("$.perspective").value("WHITE"))
+                .andExpect(jsonPath("$.explanation.evidenceRefs[0]").value("c1"));
+
+        verify(aiService).explain(request);
     }
 }

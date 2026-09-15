@@ -6,6 +6,8 @@ import com.kdh.solvego.domain.ai.dto.AiAnalyzeResponse;
 import com.kdh.solvego.domain.ai.dto.AiGameNextMoveAiResponse;
 import com.kdh.solvego.domain.ai.dto.AiGameNextMoveRequest;
 import com.kdh.solvego.domain.ai.dto.AiGameNextMoveResponse;
+import com.kdh.solvego.domain.ai.dto.AiExplanationRequest;
+import com.kdh.solvego.domain.ai.dto.AiExplanationResponse;
 import com.kdh.solvego.domain.ai.dto.AiRecommendRequest;
 import com.kdh.solvego.domain.ai.dto.AiRecommendResponse;
 import com.kdh.solvego.domain.ai.dto.AiStatusResponse;
@@ -44,6 +46,8 @@ public class AiService {
                     aiResponse.move(),
                     aiResponse.winRate(),
                     aiResponse.scoreLead(),
+                    aiResponse.candidates(),
+                    aiResponse.evidenceToken(),
                     true,
                     result,
                     GameEndReason.DOUBLE_PASS
@@ -56,6 +60,8 @@ public class AiService {
                     null,
                     aiResponse.winRate(),
                     aiResponse.scoreLead(),
+                    aiResponse.candidates(),
+                    aiResponse.evidenceToken(),
                     true,
                     GameResult.PLAYER_WIN,
                     GameEndReason.AI_RESIGN
@@ -67,10 +73,16 @@ public class AiService {
                 aiResponse.move(),
                 aiResponse.winRate(),
                 aiResponse.scoreLead(),
+                aiResponse.candidates(),
+                aiResponse.evidenceToken(),
                 false,
                 null,
                 null
         );
+    }
+
+    public AiExplanationResponse explain(AiExplanationRequest request) {
+        return aiClient.explain(request);
     }
 
     private boolean isDoublePass(

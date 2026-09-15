@@ -4,6 +4,8 @@ import com.kdh.solvego.domain.ai.dto.AiAnalyzeRequest;
 import com.kdh.solvego.domain.ai.dto.AiAnalyzeResponse;
 import com.kdh.solvego.domain.ai.dto.AiGameNextMoveRequest;
 import com.kdh.solvego.domain.ai.dto.AiGameNextMoveResponse;
+import com.kdh.solvego.domain.ai.dto.AiExplanationRequest;
+import com.kdh.solvego.domain.ai.dto.AiExplanationResponse;
 import com.kdh.solvego.domain.ai.dto.AiRecommendRequest;
 import com.kdh.solvego.domain.ai.dto.AiRecommendResponse;
 import com.kdh.solvego.domain.ai.dto.AiStatusResponse;
@@ -191,6 +193,21 @@ public class AiController {
             @Valid @RequestBody AiGameNextMoveRequest request
     ) {
         return aiService.gameNextMove(request);
+    }
+
+    @Operation(
+            summary = "AI 착수 해설",
+            description = "해당 AI 턴에서 서명한 KataGo 후보 근거로 해설을 반환합니다."
+    )
+    @SecurityRequirement(name = "bearerAuth")
+    @PostMapping(
+            value = "/game/explanation",
+            consumes = MediaType.APPLICATION_JSON_VALUE
+    )
+    public AiExplanationResponse explain(
+            @Valid @RequestBody AiExplanationRequest request
+    ) {
+        return aiService.explain(request);
     }
 
     @Operation(

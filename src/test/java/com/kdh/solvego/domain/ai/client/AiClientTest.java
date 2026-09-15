@@ -4,6 +4,8 @@ import com.kdh.solvego.domain.ai.dto.AiAnalyzeRequest;
 import com.kdh.solvego.domain.ai.dto.AiAnalyzeResponse;
 import com.kdh.solvego.domain.ai.dto.AiGameNextMoveAiResponse;
 import com.kdh.solvego.domain.ai.dto.AiGameNextMoveRequest;
+import com.kdh.solvego.domain.ai.dto.AiExplanationRequest;
+import com.kdh.solvego.domain.ai.dto.AiExplanationResponse;
 import com.kdh.solvego.domain.ai.dto.AiRecommendRequest;
 import com.kdh.solvego.domain.ai.dto.AiRecommendResponse;
 import com.kdh.solvego.domain.ai.dto.AiStatusResponse;
@@ -482,7 +484,18 @@ class AiClientTest {
                             "y": 3
                           },
                           "winRate": 0.99,
-                          "scoreLead": 13.05
+                          "scoreLead": 13.05,
+                          "evidenceToken": "signed-evidence",
+                          "candidates": [{
+                            "id": "c1",
+                            "rank": 1,
+                            "moveType": "PLAY",
+                            "move": {"x": 4, "y": 3},
+                            "winRate": 0.99,
+                            "scoreLead": 13.05,
+                            "visits": 5,
+                            "pv": [{"x": 4, "y": 3}]
+                          }]
                         }
                         """,
                         MediaType.APPLICATION_JSON
@@ -504,6 +517,10 @@ class AiClientTest {
 
         assertThat(response.scoreLead())
                 .isEqualTo(13.05);
+
+        assertThat(response.evidenceToken()).isEqualTo("signed-evidence");
+        assertThat(response.candidates()).hasSize(1);
+        assertThat(response.candidates().get(0).id()).isEqualTo("c1");
 
         mockServer.verify();
     }
@@ -572,6 +589,38 @@ class AiClientTest {
         assertThatThrownBy(() -> aiClient.gameNextMove(request))
                 .isInstanceOf(AiTimeoutException.class);
 
+        mockServer.verify();
+    }
+
+    @Test
+    @DisplayName("서명된 근거 토큰으로 AI 착수 해설을 요청한다")
+    void explain_success() {
+        AiExplanationRequest request = new AiExplanationRequest("signed-evidence");
+        mockServer.expect(requestTo("http://localhost:8000/game/explanation"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withSuccess(
+                        """
+                        {
+                          "source": "TEMPLATE",
+                          "perspective": "WHITE",
+                          "candidates": [],
+                          "explanation": {
+                            "summary": "요약",
+                            "comparison": "비교",
+                            "pvExplanation": "예상 진행",
+                            "limitation": "낮은 탐색량",
+                            "evidenceRefs": ["c1"]
+                          }
+                        }
+                        """,
+                        MediaType.APPLICATION_JSON
+                ));
+
+        AiExplanationResponse response = aiClient.explain(request);
+
+        assertThat(response.source()).isEqualTo("TEMPLATE");
+        assertThat(response.perspective()).isEqualTo(Player.WHITE);
+        assertThat(response.explanation().evidenceRefs()).containsExactly("c1");
         mockServer.verify();
     }
 }
