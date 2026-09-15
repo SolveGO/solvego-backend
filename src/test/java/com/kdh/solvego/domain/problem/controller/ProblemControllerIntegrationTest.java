@@ -492,7 +492,7 @@ class ProblemControllerIntegrationTest {
                         .content(signupRequestJson(username, password)))
                 .andExpect(status().isCreated());
 
-        MvcResult result = mockMvc.perform(post("/api/auth/login")
+        MvcResult result = mockMvc.perform(post("/api/auth/login").header("Origin", "http://localhost:5173").header("X-SolveGO-CSRF", "1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(loginRequestJson(username, password)))
                 .andExpect(status().isOk())

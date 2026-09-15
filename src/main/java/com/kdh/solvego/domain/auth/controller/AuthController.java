@@ -3,7 +3,6 @@ package com.kdh.solvego.domain.auth.controller;
 import com.kdh.solvego.domain.auth.service.AuthService;
 import com.kdh.solvego.domain.auth.dto.LoginRequest;
 import com.kdh.solvego.domain.auth.dto.LoginResponse;
-import com.kdh.solvego.global.exception.ErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -13,6 +12,11 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.CookieValue;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpHeaders;
+import com.kdh.solvego.domain.auth.exception.InvalidRefreshException;
+import com.kdh.solvego.global.exception.ErrorResponse;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -27,8 +31,11 @@ public class AuthController {
 
     private final AuthService authService;
 
-    public AuthController(AuthService authService) {
+    private final RefreshCookie refreshCookie;
+
+    public AuthController(AuthService authService, RefreshCookie refreshCookie) {
         this.authService = authService;
+        this.refreshCookie = refreshCookie;
     }
 
     @Operation(
@@ -58,8 +65,35 @@ public class AuthController {
             value="/login",
             consumes = MediaType.APPLICATION_JSON_VALUE
     )
-    public LoginResponse login(@Valid @RequestBody LoginRequest loginRequest) {
-        return authService.login(loginRequest);
+    public ResponseEntity<LoginResponse> login(
+            @Valid @RequestBody LoginRequest loginRequest,
+            @CookieValue(name = RefreshCookie.NAME, required = false) String oldToken) {
+        var tokens = authService.login(loginRequest);
+        authService.logout(oldToken);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                .header(HttpHeaders.SET_COOKIE, refreshCookie.issue(tokens.refreshToken()))
+                .body(new LoginResponse(tokens.accessToken()));
     }
 
+    @PostMapping(value = "/refresh", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> refresh(
+            @CookieValue(name = RefreshCookie.NAME, required = false) String token) {
+        try {
+            return ResponseEntity.ok().header(HttpHeaders.CACHE_CONTROL, "no-store")
+                    .body(authService.refresh(token));
+        } catch (InvalidRefreshException e) {
+            return ResponseEntity.status(401).header(HttpHeaders.CACHE_CONTROL, "no-store")
+                    .header(HttpHeaders.SET_COOKIE, refreshCookie.clear())
+                    .body(new ErrorResponse(e.getMessage()));
+        }
+    }
+
+    @PostMapping(value = "/logout", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Void> logout(
+            @CookieValue(name = RefreshCookie.NAME, required = false) String token) {
+        authService.logout(token);
+        return ResponseEntity.noContent().header(HttpHeaders.CACHE_CONTROL, "no-store")
+                .header(HttpHeaders.SET_COOKIE, refreshCookie.clear()).build();
+    }
 }

@@ -1,7 +1,7 @@
 package com.kdh.solvego.domain.auth.service;
 
 import com.kdh.solvego.domain.auth.dto.LoginRequest;
-import com.kdh.solvego.domain.auth.dto.LoginResponse;
+import com.kdh.solvego.domain.auth.dto.AuthTokens;
 import com.kdh.solvego.domain.auth.exception.InvalidLoginException;
 import com.kdh.solvego.domain.user.entity.User;
 import com.kdh.solvego.domain.user.repository.UserRepository;
@@ -35,6 +35,9 @@ class AuthServiceTest {
     @Mock
     private JwtTokenProvider jwtTokenProvider;
 
+    @Mock
+    private RefreshSessionService refreshSessions;
+
     @InjectMocks
     private AuthService authService;
 
@@ -57,7 +60,7 @@ class AuthServiceTest {
                 .thenReturn("access-token");
 
         // when
-        LoginResponse response = authService.login(request);
+        AuthTokens response = authService.login(request);
 
         // then
         assertThat(response.accessToken()).isEqualTo("access-token");

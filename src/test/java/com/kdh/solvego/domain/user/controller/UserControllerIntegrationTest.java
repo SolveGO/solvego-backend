@@ -104,7 +104,7 @@ class UserControllerIntegrationTest {
                 }
                 """;
 
-        MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
+        MvcResult loginResult = mockMvc.perform(post("/api/auth/login").header("Origin", "http://localhost:5173").header("X-SolveGO-CSRF", "1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(loginRequestBody))
                 .andExpect(status().isOk())

@@ -1,7 +1,7 @@
 package com.kdh.solvego.domain.auth.service;
 
 import com.kdh.solvego.domain.auth.dto.LoginRequest;
-import com.kdh.solvego.domain.auth.dto.LoginResponse;
+import com.kdh.solvego.domain.auth.dto.AuthTokens;
 import com.kdh.solvego.domain.auth.exception.InvalidLoginException;
 import com.kdh.solvego.domain.user.dto.SignupRequest;
 import com.kdh.solvego.domain.user.dto.SignupResponse;
@@ -49,7 +49,7 @@ class AuthServiceIntegrationTest {
         LoginRequest request = new LoginRequest("username", "1234");
 
         // when
-        LoginResponse response = authService.login(request);
+        AuthTokens response = authService.login(request);
 
         // then
         assertThat(response.accessToken()).isNotBlank();
