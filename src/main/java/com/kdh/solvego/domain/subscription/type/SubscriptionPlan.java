@@ -1,4 +1,4 @@
-package com.kdh.solvego.domain.user.type;
+package com.kdh.solvego.domain.subscription.type;
 
 public enum SubscriptionPlan {
     FREE,

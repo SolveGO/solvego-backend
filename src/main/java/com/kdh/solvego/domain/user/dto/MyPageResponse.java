@@ -1,6 +1,6 @@
 package com.kdh.solvego.domain.user.dto;
 
-import com.kdh.solvego.domain.user.type.SubscriptionPlan;
+import com.kdh.solvego.domain.subscription.type.SubscriptionPlan;
 
 import java.time.LocalDateTime;
 import java.util.List;

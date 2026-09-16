@@ -5,7 +5,7 @@ import com.kdh.solvego.domain.attempt.service.AttemptService;
 import com.kdh.solvego.domain.problem.dto.WrongProblemResponse;
 import com.kdh.solvego.domain.user.dto.MyPageProblemResponse;
 import com.kdh.solvego.domain.user.dto.MyPageResponse;
-import com.kdh.solvego.domain.user.type.SubscriptionPlan;
+import com.kdh.solvego.domain.subscription.type.SubscriptionPlan;
 import com.kdh.solvego.domain.user.dto.PasswordChangeRequest;
 import com.kdh.solvego.domain.user.dto.SignupRequest;
 import com.kdh.solvego.domain.user.dto.SignupResponse;
