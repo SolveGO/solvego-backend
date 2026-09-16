@@ -36,6 +36,9 @@ public class Payment {
     @Column(nullable = false)
     private long amount;
 
+    @Column(name = "order_name", nullable = false, length = 100)
+    private String orderName = "SolveGO PRO 1개월";
+
     @Column(name = "failure_code", length = 100)
     private String failureCode;
 
@@ -87,6 +90,21 @@ public class Payment {
 
     public long getAmount() {
         return amount;
+    }
+
+    public String getOrderName() { return orderName; }
+    public String getPaymentKey() { return paymentKey; }
+    public Instant getApprovedAt() { return approvedAt; }
+    public String getFailureCode() { return failureCode; }
+    public Instant getFailedAt() { return failedAt; }
+
+    public void startProcessing() {
+        if (status != PaymentStatus.READY) throw new IllegalStateException("Payment already claimed");
+        status = PaymentStatus.PROCESSING;
+    }
+
+    public void markUnknown() {
+        if (status == PaymentStatus.PROCESSING) status = PaymentStatus.UNKNOWN;
     }
 
     public void markSucceeded(String paymentKey, Instant approvedAt) {
