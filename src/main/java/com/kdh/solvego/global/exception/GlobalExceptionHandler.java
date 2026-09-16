@@ -8,6 +8,7 @@ import com.kdh.solvego.domain.user.exception.CurrentPasswordMismatchException;
 import com.kdh.solvego.domain.user.exception.UserNotFoundException;
 import com.kdh.solvego.domain.ai.exception.AiServerException;
 import com.kdh.solvego.domain.ai.exception.AiTimeoutException;
+import com.kdh.solvego.domain.ai.exception.ExplanationDailyLimitExceededException;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -92,6 +93,14 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.GATEWAY_TIMEOUT)
     public ErrorResponse handleAiTimeoutException(
             AiTimeoutException e
+    ) {
+        return new ErrorResponse(e.getMessage());
+    }
+
+    @ExceptionHandler(ExplanationDailyLimitExceededException.class)
+    @ResponseStatus(HttpStatus.TOO_MANY_REQUESTS)
+    public ErrorResponse handleExplanationDailyLimitExceededException(
+            ExplanationDailyLimitExceededException e
     ) {
         return new ErrorResponse(e.getMessage());
     }

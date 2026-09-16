@@ -6,6 +6,7 @@ import com.kdh.solvego.domain.ai.dto.AiGameNextMoveRequest;
 import com.kdh.solvego.domain.ai.dto.AiGameNextMoveResponse;
 import com.kdh.solvego.domain.ai.dto.AiExplanationRequest;
 import com.kdh.solvego.domain.ai.dto.AiExplanationResponse;
+import com.kdh.solvego.domain.ai.dto.AiExplanationUsageResponse;
 import com.kdh.solvego.domain.ai.dto.AiRecommendRequest;
 import com.kdh.solvego.domain.ai.dto.AiRecommendResponse;
 import com.kdh.solvego.domain.ai.dto.AiStatusResponse;
@@ -20,6 +21,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "AI", description = "AI 추천 및 착수 분석 관련 API")
@@ -205,9 +207,24 @@ public class AiController {
             consumes = MediaType.APPLICATION_JSON_VALUE
     )
     public AiExplanationResponse explain(
+            Authentication authentication,
             @Valid @RequestBody AiExplanationRequest request
     ) {
-        return aiService.explain(request);
+        Long userId = (Long) authentication.getPrincipal();
+        return aiService.explain(userId, request);
+    }
+
+    @Operation(
+            summary = "AI 착수 해설 일일 사용량",
+            description = "로그인한 사용자의 서버 기준 일일 해설 사용량을 반환합니다."
+    )
+    @SecurityRequirement(name = "bearerAuth")
+    @GetMapping("/game/explanation/usage")
+    public AiExplanationUsageResponse getExplanationUsage(
+            Authentication authentication
+    ) {
+        Long userId = (Long) authentication.getPrincipal();
+        return aiService.getExplanationUsage(userId);
     }
 
     @Operation(
