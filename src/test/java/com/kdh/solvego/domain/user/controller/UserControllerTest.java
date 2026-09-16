@@ -3,6 +3,9 @@ package com.kdh.solvego.domain.user.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kdh.solvego.domain.attempt.service.AttemptService;
 import com.kdh.solvego.domain.problem.dto.WrongProblemResponse;
+import com.kdh.solvego.domain.user.dto.MyPageProblemResponse;
+import com.kdh.solvego.domain.user.dto.MyPageResponse;
+import com.kdh.solvego.domain.user.dto.PasswordChangeRequest;
 import com.kdh.solvego.domain.user.dto.SignupRequest;
 import com.kdh.solvego.domain.user.dto.SignupResponse;
 import com.kdh.solvego.domain.user.exception.DuplicateUsernameException;
@@ -19,14 +22,17 @@ import org.springframework.security.core.Authentication;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(UserController.class)
@@ -126,5 +132,61 @@ class UserControllerTest {
                 .andExpect(jsonPath("$[0].title").value("problem title"));
 
         verify(attemptService).getWrongProblems(userId);
+    }
+
+    @Test
+    @DisplayName("마이페이지 정보를 조회한다")
+    void get_my_page_success() throws Exception {
+        Long userId = 1L;
+        Authentication authentication =
+                new UsernamePasswordAuthenticationToken(userId, null, List.of());
+        when(userService.getMyPage(userId)).thenReturn(new MyPageResponse(
+                "username",
+                LocalDateTime.of(2026, 1, 2, 3, 4),
+                2,
+                3,
+                1,
+                List.of(new MyPageProblemResponse(5L, "내 문제"))
+        ));
+
+        mockMvc.perform(get("/api/users/me").principal(authentication))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.username").value("username"))
+                .andExpect(jsonPath("$.registeredProblemCount").value(2))
+                .andExpect(jsonPath("$.solvedProblemCount").value(3))
+                .andExpect(jsonPath("$.wrongProblemCount").value(1))
+                .andExpect(jsonPath("$.problems[0].problemId").value(5L));
+
+        verify(userService).getMyPage(userId);
+    }
+
+    @Test
+    @DisplayName("현재 비밀번호와 새 비밀번호로 비밀번호를 변경한다")
+    void change_password_success() throws Exception {
+        Long userId = 1L;
+        Authentication authentication =
+                new UsernamePasswordAuthenticationToken(userId, null, List.of());
+        PasswordChangeRequest request = new PasswordChangeRequest("old", "new");
+
+        mockMvc.perform(put("/api/users/me/password")
+                        .principal(authentication)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isNoContent());
+
+        verify(userService).changePassword(userId, request);
+    }
+
+    @Test
+    @DisplayName("회원 탈퇴를 요청한다")
+    void delete_account_success() throws Exception {
+        Long userId = 1L;
+        Authentication authentication =
+                new UsernamePasswordAuthenticationToken(userId, null, List.of());
+
+        mockMvc.perform(delete("/api/users/me").principal(authentication))
+                .andExpect(status().isNoContent());
+
+        verify(userService).deleteAccount(userId);
     }
 }

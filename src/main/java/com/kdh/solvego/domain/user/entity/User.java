@@ -40,6 +40,14 @@ public class User {
         return username;
     }
 
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void changePassword(String password) {
+        this.password = password;
+    }
+
     public boolean matchesPassword(
             String rawPassword,
             PasswordEncoder passwordEncoder

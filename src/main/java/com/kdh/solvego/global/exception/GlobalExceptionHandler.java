@@ -4,6 +4,7 @@ import com.kdh.solvego.domain.auth.exception.InvalidLoginException;
 import com.kdh.solvego.domain.problem.exception.ProblemOwnershipException;
 import com.kdh.solvego.domain.problem.exception.ProblemNotFoundException;
 import com.kdh.solvego.domain.user.exception.DuplicateUsernameException;
+import com.kdh.solvego.domain.user.exception.CurrentPasswordMismatchException;
 import com.kdh.solvego.domain.user.exception.UserNotFoundException;
 import com.kdh.solvego.domain.ai.exception.AiServerException;
 import com.kdh.solvego.domain.ai.exception.AiTimeoutException;
@@ -34,6 +35,14 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
     public ErrorResponse handleInvalidLoginException(
             InvalidLoginException e
+    ) {
+        return new ErrorResponse(e.getMessage());
+    }
+
+    @ExceptionHandler(CurrentPasswordMismatchException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleCurrentPasswordMismatchException(
+            CurrentPasswordMismatchException e
     ) {
         return new ErrorResponse(e.getMessage());
     }
