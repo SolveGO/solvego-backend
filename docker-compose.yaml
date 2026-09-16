@@ -54,6 +54,8 @@ services:
       REDIS_PORT: 6379
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
       AI_BASE_URL: ${AI_BASE_URL}
+      TOSS_PAYMENTS_SECRET_KEY: ${TOSS_PAYMENTS_SECRET_KEY}
+      BILLING_KEY_ENCRYPTION_KEY: ${BILLING_KEY_ENCRYPTION_KEY}
     depends_on:
       db:
         condition: service_healthy
@@ -84,4 +86,3 @@ services:
       - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
     depends_on:
       - prometheus
-

@@ -82,6 +82,9 @@ jobs:
     if: github.ref == 'refs/heads/main'
     runs-on: [self-hosted, Linux, X64]
     timeout-minutes: 15
+    env:
+      TOSS_PAYMENTS_SECRET_KEY: ${{ secrets.TOSS_PAYMENTS_SECRET_KEY }}
+      BILLING_KEY_ENCRYPTION_KEY: ${{ secrets.BILLING_KEY_ENCRYPTION_KEY }}
 
     steps:
       - name: Deploy SolveGO
