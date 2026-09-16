@@ -85,7 +85,7 @@ public class ExplanationUsageService {
     ) {
         return new AiExplanationUsageResponse(
                 usedCount,
-                remainingCount,
+                Math.max(0, remainingCount),
                 dailyLimit,
                 window.resetsAt()
         );

@@ -12,6 +12,7 @@ import com.kdh.solvego.domain.user.entity.User;
 import com.kdh.solvego.domain.user.exception.CurrentPasswordMismatchException;
 import com.kdh.solvego.domain.user.exception.DuplicateUsernameException;
 import com.kdh.solvego.domain.user.repository.UserRepository;
+import com.kdh.solvego.domain.user.type.SubscriptionPlan;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -138,6 +139,7 @@ class UserServiceTest {
         assertThat(response.registeredProblemCount()).isEqualTo(1);
         assertThat(response.solvedProblemCount()).isEqualTo(4);
         assertThat(response.wrongProblemCount()).isEqualTo(2);
+        assertThat(response.plan()).isEqualTo(SubscriptionPlan.FREE);
         assertThat(response.problems()).hasSize(1);
         assertThat(response.problems().get(0).problemId()).isEqualTo(7L);
     }

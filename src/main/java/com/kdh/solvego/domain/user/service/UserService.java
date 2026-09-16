@@ -18,6 +18,7 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.List;
 
 @Service
@@ -78,6 +79,7 @@ public class UserService {
                 problemRepository.countByCreatorId(userId),
                 attemptRepository.countDistinctProblemsByUserId(userId),
                 attemptRepository.countDistinctWrongProblemsByUserId(userId),
+                user.getCurrentPlan(Instant.now()),
                 problems
         );
     }

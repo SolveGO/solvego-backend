@@ -1,6 +1,8 @@
 package com.kdh.solvego.domain.user.repository;
 
 import com.kdh.solvego.domain.user.entity.User;
+import com.kdh.solvego.domain.user.type.SubscriptionPlan;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,6 +11,7 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.util.Optional;
+import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -19,6 +22,9 @@ class UserRepositoryTest {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private EntityManager entityManager;
 
     @Test
     @DisplayName("username이 존재하면 true를 반환한다")
@@ -67,5 +73,26 @@ class UserRepositoryTest {
 
         // then
         assertThat(foundUser).isEmpty();
+    }
+
+    @Test
+    @DisplayName("신규 사용자는 FREE이고 활성화된 PRO 구독은 저장된다")
+    void subscription_plan_is_persisted() {
+        User user = userRepository.save(new User("subscriber", "encoded-password"));
+
+        assertThat(user.getCurrentPlan(Instant.parse("2026-09-16T00:00:00Z")))
+                .isEqualTo(SubscriptionPlan.FREE);
+
+        user.activateSubscription(
+                SubscriptionPlan.PRO,
+                Instant.parse("2026-09-01T00:00:00Z"),
+                Instant.parse("2026-10-01T00:00:00Z")
+        );
+        userRepository.flush();
+        entityManager.clear();
+
+        User found = userRepository.findById(user.getId()).orElseThrow();
+        assertThat(found.getCurrentPlan(Instant.parse("2026-09-16T00:00:00Z")))
+                .isEqualTo(SubscriptionPlan.PRO);
     }
 }

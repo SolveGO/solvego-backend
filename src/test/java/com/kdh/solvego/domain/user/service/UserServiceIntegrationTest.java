@@ -11,6 +11,7 @@ import com.kdh.solvego.domain.user.dto.PasswordChangeRequest;
 import com.kdh.solvego.domain.user.dto.SignupRequest;
 import com.kdh.solvego.domain.user.dto.SignupResponse;
 import com.kdh.solvego.domain.user.entity.User;
+import com.kdh.solvego.domain.user.type.SubscriptionPlan;
 import com.kdh.solvego.domain.user.exception.DuplicateUsernameException;
 import com.kdh.solvego.domain.user.repository.UserRepository;
 import jakarta.persistence.EntityManager;
@@ -115,6 +116,7 @@ class UserServiceIntegrationTest {
         assertThat(response.registeredProblemCount()).isEqualTo(1);
         assertThat(response.solvedProblemCount()).isEqualTo(1);
         assertThat(response.wrongProblemCount()).isEqualTo(1);
+        assertThat(response.plan()).isEqualTo(SubscriptionPlan.FREE);
         assertThat(response.problems().get(0).problemId()).isEqualTo(problem.getId());
         User changedUser = userRepository.findById(userId).orElseThrow();
         assertThat(changedUser.matchesPassword("changed-password", passwordEncoder)).isTrue();
