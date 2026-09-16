@@ -14,8 +14,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class SubscriptionMigrationTest {
     @Test
-    @DisplayName("V4 사용자 구독 데이터를 V5 subscriptions로 이관한다")
-    void v5_migrates_existing_user_subscriptions() throws Exception {
+    @DisplayName("V4 구독 데이터를 V5로 이관한 뒤 V6에서 legacy 컬럼을 제거한다")
+    void migrates_v4_through_v5_and_v6() throws Exception {
         String sourceUrl = environment(
                 "TEST_DB_URL",
                 "jdbc:mysql://localhost:3306/solvego_test"
@@ -82,6 +82,7 @@ class SubscriptionMigrationTest {
             Flyway.configure()
                     .dataSource(urls.databaseUrl(), username, password)
                     .locations("classpath:db/migration")
+                    .target("5")
                     .load()
                     .migrate();
 
@@ -128,6 +129,39 @@ class SubscriptionMigrationTest {
                 );
                 assertThat(payments.next()).isTrue();
                 assertThat(payments.getInt(1)).isZero();
+            }
+
+            Flyway.configure()
+                    .dataSource(urls.databaseUrl(), username, password)
+                    .locations("classpath:db/migration")
+                    .load()
+                    .migrate();
+
+            try (Connection connection = DriverManager.getConnection(
+                    urls.databaseUrl(),
+                    username,
+                    password
+            ); Statement statement = connection.createStatement()) {
+                ResultSet legacyColumns = statement.executeQuery("""
+                        SELECT COUNT(*)
+                        FROM information_schema.columns
+                        WHERE table_schema = DATABASE()
+                          AND table_name = 'users'
+                          AND column_name IN (
+                              'subscription_plan',
+                              'subscription_status',
+                              'subscription_started_at',
+                              'subscription_expires_at'
+                          )
+                        """);
+                assertThat(legacyColumns.next()).isTrue();
+                assertThat(legacyColumns.getInt(1)).isZero();
+
+                ResultSet migratedSubscriptions = statement.executeQuery(
+                        "SELECT COUNT(*) FROM subscriptions"
+                );
+                assertThat(migratedSubscriptions.next()).isTrue();
+                assertThat(migratedSubscriptions.getInt(1)).isEqualTo(2);
             }
         } finally {
             try (Connection connection = DriverManager.getConnection(
