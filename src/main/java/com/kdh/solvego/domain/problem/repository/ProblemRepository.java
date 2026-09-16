@@ -4,6 +4,7 @@ import com.kdh.solvego.domain.problem.entity.Problem;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -41,5 +42,13 @@ public interface ProblemRepository extends JpaRepository<Problem, Long> {
             where p.id = :problemId
             """)
     Optional<Problem> findByIdWithCreator(@Param("problemId") Long problemId);
+
+    long countByCreatorId(Long creatorId);
+
+    List<Problem> findAllByCreatorIdOrderByIdDesc(Long creatorId);
+
+    @Modifying(clearAutomatically = true)
+    @Query("delete from Problem p where p.creator.id = :creatorId")
+    void deleteAllByCreatorId(@Param("creatorId") Long creatorId);
 
 }

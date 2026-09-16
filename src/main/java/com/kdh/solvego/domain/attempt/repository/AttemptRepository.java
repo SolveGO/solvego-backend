@@ -22,6 +22,17 @@ public interface AttemptRepository extends JpaRepository<Attempt, Long> {
             """)
     List<Problem> findWrongProblemsByUserId(@Param("userId") Long userId);
 
+    @Query("select count(distinct a.problem.id) from Attempt a where a.user.id = :userId")
+    long countDistinctProblemsByUserId(@Param("userId") Long userId);
+
+    @Query("""
+            select count(distinct a.problem.id)
+            from Attempt a
+            where a.user.id = :userId
+              and a.isCorrect = false
+            """)
+    long countDistinctWrongProblemsByUserId(@Param("userId") Long userId);
+
     @Modifying(
             clearAutomatically = true
     )
@@ -30,4 +41,12 @@ public interface AttemptRepository extends JpaRepository<Attempt, Long> {
             where a.problem.id = :problemId
             """)
     void deleteAllByProblemId(@Param("problemId") Long problemId);
+
+    @Modifying(clearAutomatically = true)
+    @Query("delete from Attempt a where a.problem.creator.id = :creatorId")
+    void deleteAllByProblemCreatorId(@Param("creatorId") Long creatorId);
+
+    @Modifying(clearAutomatically = true)
+    @Query("delete from Attempt a where a.user.id = :userId")
+    void deleteAllByUserId(@Param("userId") Long userId);
 }

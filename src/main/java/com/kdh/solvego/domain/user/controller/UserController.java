@@ -3,6 +3,8 @@ package com.kdh.solvego.domain.user.controller;
 import com.kdh.solvego.domain.problem.dto.WrongProblemResponse;
 import com.kdh.solvego.domain.attempt.service.AttemptService;
 import com.kdh.solvego.domain.user.service.UserService;
+import com.kdh.solvego.domain.user.dto.MyPageResponse;
+import com.kdh.solvego.domain.user.dto.PasswordChangeRequest;
 import com.kdh.solvego.domain.user.dto.SignupRequest;
 import com.kdh.solvego.domain.user.dto.SignupResponse;
 import com.kdh.solvego.global.exception.ErrorResponse;
@@ -88,5 +90,34 @@ public class UserController {
         Long userId = (Long) authentication.getPrincipal();
 
         return attemptService.getWrongProblems(userId);
+    }
+
+    @SecurityRequirement(name = "bearerAuth")
+    @GetMapping("/me")
+    public MyPageResponse getMyPage(Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+        return userService.getMyPage(userId);
+    }
+
+    @SecurityRequirement(name = "bearerAuth")
+    @PutMapping(
+            value = "/me/password",
+            consumes = MediaType.APPLICATION_JSON_VALUE
+    )
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void changePassword(
+            Authentication authentication,
+            @Valid @RequestBody PasswordChangeRequest request
+    ) {
+        Long userId = (Long) authentication.getPrincipal();
+        userService.changePassword(userId, request);
+    }
+
+    @SecurityRequirement(name = "bearerAuth")
+    @DeleteMapping("/me")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteAccount(Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+        userService.deleteAccount(userId);
     }
 }
