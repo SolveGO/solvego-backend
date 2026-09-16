@@ -6,12 +6,13 @@ import com.kdh.solvego.domain.common.vo.Position;
 import com.kdh.solvego.domain.problem.entity.PlayerColor;
 import com.kdh.solvego.domain.problem.entity.Problem;
 import com.kdh.solvego.domain.problem.repository.ProblemRepository;
+import com.kdh.solvego.domain.subscription.repository.SubscriptionRepository;
+import com.kdh.solvego.domain.subscription.type.SubscriptionPlan;
 import com.kdh.solvego.domain.user.dto.MyPageResponse;
 import com.kdh.solvego.domain.user.dto.PasswordChangeRequest;
 import com.kdh.solvego.domain.user.dto.SignupRequest;
 import com.kdh.solvego.domain.user.dto.SignupResponse;
 import com.kdh.solvego.domain.user.entity.User;
-import com.kdh.solvego.domain.user.type.SubscriptionPlan;
 import com.kdh.solvego.domain.user.exception.DuplicateUsernameException;
 import com.kdh.solvego.domain.user.repository.UserRepository;
 import jakarta.persistence.EntityManager;
@@ -38,6 +39,9 @@ class UserServiceIntegrationTest {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private SubscriptionRepository subscriptionRepository;
 
     @Autowired
     private ProblemRepository problemRepository;
@@ -74,6 +78,12 @@ class UserServiceIntegrationTest {
 
         assertThat(savedUser.matchesPassword("wrong-password", passwordEncoder))
                 .isFalse();
+        assertThat(subscriptionRepository.findByUserId(savedUser.getId()))
+                .get()
+                .extracting(subscription -> subscription.effectivePlan(
+                        java.time.Instant.now()
+                ))
+                .isEqualTo(SubscriptionPlan.FREE);
     }
 
     @Test

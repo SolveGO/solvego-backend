@@ -2,6 +2,9 @@ package com.kdh.solvego.domain.user.service;
 
 import com.kdh.solvego.domain.attempt.repository.AttemptRepository;
 import com.kdh.solvego.domain.problem.repository.ProblemRepository;
+import com.kdh.solvego.domain.subscription.entity.Subscription;
+import com.kdh.solvego.domain.subscription.repository.SubscriptionRepository;
+import com.kdh.solvego.domain.subscription.service.SubscriptionEntitlementService;
 import com.kdh.solvego.domain.user.dto.MyPageProblemResponse;
 import com.kdh.solvego.domain.user.dto.MyPageResponse;
 import com.kdh.solvego.domain.user.dto.PasswordChangeRequest;
@@ -18,7 +21,6 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
 import java.util.List;
 
 @Service
@@ -27,17 +29,23 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final ProblemRepository problemRepository;
     private final AttemptRepository attemptRepository;
+    private final SubscriptionRepository subscriptionRepository;
+    private final SubscriptionEntitlementService entitlementService;
 
     public UserService(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
             ProblemRepository problemRepository,
-            AttemptRepository attemptRepository
+            AttemptRepository attemptRepository,
+            SubscriptionRepository subscriptionRepository,
+            SubscriptionEntitlementService entitlementService
     ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.problemRepository = problemRepository;
         this.attemptRepository = attemptRepository;
+        this.subscriptionRepository = subscriptionRepository;
+        this.entitlementService = entitlementService;
     }
 
     @Transactional
@@ -52,12 +60,14 @@ public class UserService {
                 encodedPassword
         );
 
+        User savedUser;
         try {
-            User savedUser = userRepository.save(user);
-            return new SignupResponse(savedUser.getId());
+            savedUser = userRepository.save(user);
         } catch (DataIntegrityViolationException e) {
             throw new DuplicateUsernameException();
         }
+        subscriptionRepository.save(Subscription.free(savedUser));
+        return new SignupResponse(savedUser.getId());
     }
 
     @Transactional
@@ -79,7 +89,7 @@ public class UserService {
                 problemRepository.countByCreatorId(userId),
                 attemptRepository.countDistinctProblemsByUserId(userId),
                 attemptRepository.countDistinctWrongProblemsByUserId(userId),
-                user.getCurrentPlan(Instant.now()),
+                entitlementService.currentPlan(userId),
                 problems
         );
     }

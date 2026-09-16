@@ -4,6 +4,10 @@ package com.kdh.solvego.domain.user.service;
 import com.kdh.solvego.domain.attempt.repository.AttemptRepository;
 import com.kdh.solvego.domain.problem.entity.Problem;
 import com.kdh.solvego.domain.problem.repository.ProblemRepository;
+import com.kdh.solvego.domain.subscription.entity.Subscription;
+import com.kdh.solvego.domain.subscription.repository.SubscriptionRepository;
+import com.kdh.solvego.domain.subscription.service.SubscriptionEntitlementService;
+import com.kdh.solvego.domain.subscription.type.SubscriptionPlan;
 import com.kdh.solvego.domain.user.dto.MyPageResponse;
 import com.kdh.solvego.domain.user.dto.PasswordChangeRequest;
 import com.kdh.solvego.domain.user.dto.SignupRequest;
@@ -12,7 +16,6 @@ import com.kdh.solvego.domain.user.entity.User;
 import com.kdh.solvego.domain.user.exception.CurrentPasswordMismatchException;
 import com.kdh.solvego.domain.user.exception.DuplicateUsernameException;
 import com.kdh.solvego.domain.user.repository.UserRepository;
-import com.kdh.solvego.domain.user.type.SubscriptionPlan;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -52,6 +55,12 @@ class UserServiceTest {
     @Mock
     private AttemptRepository attemptRepository;
 
+    @Mock
+    private SubscriptionRepository subscriptionRepository;
+
+    @Mock
+    private SubscriptionEntitlementService entitlementService;
+
     @InjectMocks
     private UserService userService;
 
@@ -90,6 +99,13 @@ class UserServiceTest {
         String savedPassword = (String) ReflectionTestUtils.getField(savedUser, "password");
         assertThat(savedPassword).isEqualTo("encoded-password");
 
+        ArgumentCaptor<Subscription> subscriptionCaptor =
+                ArgumentCaptor.forClass(Subscription.class);
+        verify(subscriptionRepository).save(subscriptionCaptor.capture());
+        assertThat(subscriptionCaptor.getValue().getUser()).isSameAs(savedUser);
+        assertThat(subscriptionCaptor.getValue().getPlan())
+                .isEqualTo(SubscriptionPlan.FREE);
+
 
         verify(userRepository).existsByUsername("username");
         verify(passwordEncoder).encode("1234");
@@ -111,6 +127,7 @@ class UserServiceTest {
         verify(userRepository).existsByUsername("username");
         verify(passwordEncoder, never()).encode(anyString());
         verify(userRepository, never()).save(any(User.class));
+        verify(subscriptionRepository, never()).save(any(Subscription.class));
     }
 
     @Test
@@ -132,6 +149,7 @@ class UserServiceTest {
         when(problemRepository.countByCreatorId(1L)).thenReturn(1L);
         when(attemptRepository.countDistinctProblemsByUserId(1L)).thenReturn(4L);
         when(attemptRepository.countDistinctWrongProblemsByUserId(1L)).thenReturn(2L);
+        when(entitlementService.currentPlan(1L)).thenReturn(SubscriptionPlan.FREE);
 
         MyPageResponse response = userService.getMyPage(1L);
 
