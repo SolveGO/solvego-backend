@@ -17,6 +17,12 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+    @ExceptionHandler(com.kdh.solvego.domain.subscription.exception.SubscriptionCheckoutException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ErrorResponse handleCheckout(com.kdh.solvego.domain.subscription.exception.SubscriptionCheckoutException e) {
+        return new ErrorResponse(e.getMessage());
+    }
+
     @ExceptionHandler(org.springframework.data.redis.RedisConnectionFailureException.class)
     @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
     public ErrorResponse handleRedisUnavailable() {

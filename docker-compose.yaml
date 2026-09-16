@@ -56,6 +56,7 @@ services:
       AI_BASE_URL: ${AI_BASE_URL}
       TOSS_PAYMENTS_SECRET_KEY: ${TOSS_PAYMENTS_SECRET_KEY}
       BILLING_KEY_ENCRYPTION_KEY: ${BILLING_KEY_ENCRYPTION_KEY}
+      PRO_MONTHLY_AMOUNT: ${PRO_MONTHLY_AMOUNT:-5000}
     depends_on:
       db:
         condition: service_healthy

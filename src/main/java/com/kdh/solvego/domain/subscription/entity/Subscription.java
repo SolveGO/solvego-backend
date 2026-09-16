@@ -97,6 +97,26 @@ public class Subscription {
         this.currentPeriodEndAt = periodEndAt;
     }
 
+    public String getCustomerKey() { return customerKey; }
+    public String getBillingKeyCiphertext() { return billingKeyCiphertext; }
+    public Instant getCurrentPeriodStartAt() { return currentPeriodStartAt; }
+    public Instant getCurrentPeriodEndAt() { return currentPeriodEndAt; }
+    public Instant getNextBillingAt() { return nextBillingAt; }
+    public boolean isAutoRenew() { return autoRenew; }
+
+    public void initializeCustomerKey(String key) {
+        if (customerKey == null) customerKey = key;
+    }
+
+    public void storeBillingKey(String ciphertext) { billingKeyCiphertext = ciphertext; }
+
+    public void activatePaidPro(Instant start, Instant end) {
+        activatePro(start, end);
+        nextBillingAt = end;
+        autoRenew = true;
+        cancelAtPeriodEnd = false;
+    }
+
     public Long getId() {
         return id;
     }
