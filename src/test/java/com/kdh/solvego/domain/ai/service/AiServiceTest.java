@@ -6,6 +6,9 @@ import com.kdh.solvego.domain.ai.dto.AiAnalyzeResponse;
 import com.kdh.solvego.domain.ai.dto.AiGameNextMoveAiResponse;
 import com.kdh.solvego.domain.ai.dto.AiGameNextMoveRequest;
 import com.kdh.solvego.domain.ai.dto.AiGameNextMoveResponse;
+import com.kdh.solvego.domain.ai.dto.AiExplanationRequest;
+import com.kdh.solvego.domain.ai.dto.AiExplanationResponse;
+import com.kdh.solvego.domain.ai.dto.AiExplanationUsageResponse;
 import com.kdh.solvego.domain.ai.dto.AiGameCandidate;
 import com.kdh.solvego.domain.ai.dto.AiRecommendRequest;
 import com.kdh.solvego.domain.ai.dto.AiRecommendResponse;
@@ -24,6 +27,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
@@ -34,6 +38,9 @@ class AiServiceTest {
 
     @Mock
     private AiClient aiClient;
+
+    @Mock
+    private ExplanationUsageService explanationUsageService;
 
     @InjectMocks
     private AiService aiService;
@@ -397,5 +404,32 @@ class AiServiceTest {
                 .isNull();
 
         verify(aiClient).gameNextMove(request);
+    }
+
+    @Test
+    @DisplayName("해설 사용량을 차감한 뒤 AI 해설에 최신 사용량을 포함한다")
+    void explain_consumes_usage_and_returns_it() {
+        Long userId = 1L;
+        AiExplanationRequest request = new AiExplanationRequest("signed-evidence");
+        AiExplanationUsageResponse usage = new AiExplanationUsageResponse(
+                1, 4, 5, Instant.parse("2026-09-16T15:00:00Z")
+        );
+        AiExplanationResponse aiResponse = new AiExplanationResponse(
+                "LLM",
+                Player.WHITE,
+                List.of(),
+                new AiExplanationResponse.Explanation(
+                        "요약", "", "", "", List.of("c1")
+                )
+        );
+        when(explanationUsageService.consume(userId, "signed-evidence"))
+                .thenReturn(usage);
+        when(aiClient.explain(request)).thenReturn(aiResponse);
+
+        AiExplanationResponse response = aiService.explain(userId, request);
+
+        assertThat(response.usage()).isEqualTo(usage);
+        verify(explanationUsageService).consume(userId, "signed-evidence");
+        verify(aiClient).explain(request);
     }
 }

@@ -7,11 +7,13 @@ import com.kdh.solvego.domain.ai.dto.AiGameNextMoveRequest;
 import com.kdh.solvego.domain.ai.dto.AiGameNextMoveResponse;
 import com.kdh.solvego.domain.ai.dto.AiExplanationRequest;
 import com.kdh.solvego.domain.ai.dto.AiExplanationResponse;
+import com.kdh.solvego.domain.ai.dto.AiExplanationUsageResponse;
 import com.kdh.solvego.domain.ai.dto.AiRecommendRequest;
 import com.kdh.solvego.domain.ai.dto.AiRecommendResponse;
 import com.kdh.solvego.domain.ai.dto.AiStatusResponse;
 import com.kdh.solvego.domain.ai.exception.AiServerException;
 import com.kdh.solvego.domain.ai.exception.AiTimeoutException;
+import com.kdh.solvego.domain.ai.exception.ExplanationDailyLimitExceededException;
 import com.kdh.solvego.domain.ai.service.AiService;
 import com.kdh.solvego.domain.ai.type.GameEndReason;
 import com.kdh.solvego.domain.ai.type.GameResult;
@@ -26,10 +28,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
+import java.time.Instant;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -583,25 +587,72 @@ class AiControllerTest {
     @Test
     @DisplayName("서명된 근거 토큰으로 AI 착수 해설을 반환한다")
     void explain_success() throws Exception {
+        Long userId = 1L;
         AiExplanationRequest request = new AiExplanationRequest("signed-evidence");
+        AiExplanationUsageResponse usage = new AiExplanationUsageResponse(
+                1, 4, 5, Instant.parse("2026-09-16T15:00:00Z")
+        );
         AiExplanationResponse response = new AiExplanationResponse(
                 "TEMPLATE",
                 Player.WHITE,
                 List.of(),
                 new AiExplanationResponse.Explanation(
                         "요약", "비교", "예상 진행", "낮은 탐색량", List.of("c1")
-                )
+                ),
+                usage
         );
-        when(aiService.explain(request)).thenReturn(response);
+        when(aiService.explain(userId, request)).thenReturn(response);
 
         mockMvc.perform(post("/api/ai/game/explanation")
+                        .principal(new UsernamePasswordAuthenticationToken(
+                                userId, null, List.of()
+                        ))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.source").value("TEMPLATE"))
                 .andExpect(jsonPath("$.perspective").value("WHITE"))
+                .andExpect(jsonPath("$.usage.remainingCount").value(4))
                 .andExpect(jsonPath("$.explanation.evidenceRefs[0]").value("c1"));
 
-        verify(aiService).explain(request);
+        verify(aiService).explain(userId, request);
+    }
+
+    @Test
+    @DisplayName("AI 착수 해설 일일 사용량을 반환한다")
+    void get_explanation_usage_success() throws Exception {
+        Long userId = 1L;
+        AiExplanationUsageResponse usage = new AiExplanationUsageResponse(
+                2, 3, 5, Instant.parse("2026-09-16T15:00:00Z")
+        );
+        when(aiService.getExplanationUsage(userId)).thenReturn(usage);
+
+        mockMvc.perform(get("/api/ai/game/explanation/usage")
+                        .principal(new UsernamePasswordAuthenticationToken(
+                                userId, null, List.of()
+                        )))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.usedCount").value(2))
+                .andExpect(jsonPath("$.remainingCount").value(3))
+                .andExpect(jsonPath("$.dailyLimit").value(5));
+    }
+
+    @Test
+    @DisplayName("AI 착수 해설 일일 한도를 넘으면 429를 반환한다")
+    void explain_fails_when_daily_limit_is_exceeded() throws Exception {
+        Long userId = 1L;
+        AiExplanationRequest request = new AiExplanationRequest("signed-evidence");
+        when(aiService.explain(userId, request))
+                .thenThrow(new ExplanationDailyLimitExceededException());
+
+        mockMvc.perform(post("/api/ai/game/explanation")
+                        .principal(new UsernamePasswordAuthenticationToken(
+                                userId, null, List.of()
+                        ))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.message")
+                        .value("Daily AI explanation limit exceeded"));
     }
 }

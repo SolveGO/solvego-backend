@@ -8,6 +8,7 @@ import com.kdh.solvego.domain.ai.dto.AiGameNextMoveRequest;
 import com.kdh.solvego.domain.ai.dto.AiGameNextMoveResponse;
 import com.kdh.solvego.domain.ai.dto.AiExplanationRequest;
 import com.kdh.solvego.domain.ai.dto.AiExplanationResponse;
+import com.kdh.solvego.domain.ai.dto.AiExplanationUsageResponse;
 import com.kdh.solvego.domain.ai.dto.AiRecommendRequest;
 import com.kdh.solvego.domain.ai.dto.AiRecommendResponse;
 import com.kdh.solvego.domain.ai.dto.AiStatusResponse;
@@ -22,9 +23,14 @@ public class AiService {
     private static final double AI_RESIGN_WIN_RATE_THRESHOLD = 0.10;
 
     private final AiClient aiClient;
+    private final ExplanationUsageService explanationUsageService;
 
-    public AiService(AiClient aiClient) {
+    public AiService(
+            AiClient aiClient,
+            ExplanationUsageService explanationUsageService
+    ) {
         this.aiClient = aiClient;
+        this.explanationUsageService = explanationUsageService;
     }
 
     public AiRecommendResponse recommend(AiRecommendRequest request) {
@@ -81,8 +87,19 @@ public class AiService {
         );
     }
 
-    public AiExplanationResponse explain(AiExplanationRequest request) {
-        return aiClient.explain(request);
+    public AiExplanationResponse explain(
+            Long userId,
+            AiExplanationRequest request
+    ) {
+        AiExplanationUsageResponse usage = explanationUsageService.consume(
+                userId,
+                request.evidenceToken()
+        );
+        return aiClient.explain(request).withUsage(usage);
+    }
+
+    public AiExplanationUsageResponse getExplanationUsage(Long userId) {
+        return explanationUsageService.getUsage(userId);
     }
 
     private boolean isDoublePass(
