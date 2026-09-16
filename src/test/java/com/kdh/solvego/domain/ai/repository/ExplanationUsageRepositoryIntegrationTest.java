@@ -65,4 +65,30 @@ class ExplanationUsageRepositoryIntegrationTest {
         assertThat(repository.consume(USER_ID, nextDate, "hash-2", 5, resetsAt))
                 .isEqualTo(new ExplanationUsageRepository.UsageCount(1, 4));
     }
+
+    @Test
+    @DisplayName("PRO 한도는 하루 30회까지 허용하고 31번째 요청을 거부한다")
+    void pro_limit_allows_thirty_explanations() {
+        LocalDate date = LocalDate.of(2026, 9, 18);
+        Instant resetsAt = Instant.now().plusSeconds(3600);
+
+        for (int index = 1; index <= 30; index++) {
+            repository.consume(
+                    USER_ID,
+                    date,
+                    "pro-hash-" + index,
+                    30,
+                    resetsAt
+            );
+        }
+
+        assertThat(repository.count(USER_ID, date)).isEqualTo(30);
+        assertThatThrownBy(() -> repository.consume(
+                USER_ID,
+                date,
+                "pro-hash-31",
+                30,
+                resetsAt
+        )).isInstanceOf(ExplanationDailyLimitExceededException.class);
+    }
 }

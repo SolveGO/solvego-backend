@@ -5,6 +5,7 @@ import com.kdh.solvego.domain.attempt.service.AttemptService;
 import com.kdh.solvego.domain.problem.dto.WrongProblemResponse;
 import com.kdh.solvego.domain.user.dto.MyPageProblemResponse;
 import com.kdh.solvego.domain.user.dto.MyPageResponse;
+import com.kdh.solvego.domain.user.type.SubscriptionPlan;
 import com.kdh.solvego.domain.user.dto.PasswordChangeRequest;
 import com.kdh.solvego.domain.user.dto.SignupRequest;
 import com.kdh.solvego.domain.user.dto.SignupResponse;
@@ -146,6 +147,7 @@ class UserControllerTest {
                 2,
                 3,
                 1,
+                SubscriptionPlan.FREE,
                 List.of(new MyPageProblemResponse(5L, "내 문제"))
         ));
 
@@ -155,6 +157,7 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.registeredProblemCount").value(2))
                 .andExpect(jsonPath("$.solvedProblemCount").value(3))
                 .andExpect(jsonPath("$.wrongProblemCount").value(1))
+                .andExpect(jsonPath("$.plan").value("FREE"))
                 .andExpect(jsonPath("$.problems[0].problemId").value(5L));
 
         verify(userService).getMyPage(userId);
