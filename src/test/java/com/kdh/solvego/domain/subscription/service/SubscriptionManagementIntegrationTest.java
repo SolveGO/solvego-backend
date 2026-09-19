@@ -47,7 +47,9 @@ class SubscriptionManagementIntegrationTest {
 
     @Test
     void canceledSubscriptionKeepsProAndIsExcludedUntilReactivated() {
-        Instant now = Instant.now();
+        // MySQL DATETIME(6) stores microseconds. Keep the fixture at the same precision so
+        // the exact assertion below verifies the persisted value on every operating system.
+        Instant now = Instant.now().truncatedTo(ChronoUnit.MICROS);
         Instant periodEnd = now.plus(1, ChronoUnit.DAYS);
         User user = users.save(new User("manage-" + UUID.randomUUID(), "encoded"));
         userId = user.getId();
