@@ -182,6 +182,16 @@ class SubscriptionMigrationTest {
                         """);
                 assertThat(renewalCycleConstraint.next()).isTrue();
                 assertThat(renewalCycleConstraint.getInt(1)).isEqualTo(3);
+
+                ResultSet initialMarker = statement.executeQuery("""
+                        SELECT COUNT(*)
+                        FROM information_schema.columns
+                        WHERE table_schema = DATABASE()
+                          AND table_name = 'payments'
+                          AND column_name = 'initial_payment_marker'
+                        """);
+                assertThat(initialMarker.next()).isTrue();
+                assertThat(initialMarker.getInt(1)).isZero();
             }
         } finally {
             try (Connection connection = DriverManager.getConnection(

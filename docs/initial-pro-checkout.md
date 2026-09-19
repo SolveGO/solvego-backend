@@ -10,9 +10,13 @@
 6. Payment SUCCEEDED와 Subscription PRO/ACTIVE를 원자적으로 반영한다. 승인 시각부터 Asia/Seoul 기준 1개월(월말 보정)이며 nextBillingAt은 기간 종료 시각, autoRenew=true, cancelAtPeriodEnd=false다.
 7. MyPage로 이동하여 `/api/users/me`, 기존 AI 사용량 API를 재조회한다. 기존 사용 횟수는 유지되고 일일 한도만 FREE 5에서 PRO 30으로 늘어난다.
 
-자동 갱신 의사와 예정 시각을 저장하며, 정기결제 Scheduler가 도래한 구독을 별도 RENEWAL Payment로 청구한다. 구독 취소·환불·실패 재시도는 구현하지 않았다. 프론트·백엔드 모두 현재 test 키만 허용한다.
+자동 갱신 의사와 예정 시각을 저장하며, 정기결제 Scheduler가 도래한 구독을 별도 RENEWAL Payment로 청구한다. 확정 실패한 최초 결제는 새 주문번호로 다시 시도할 수 있다. 프론트·백엔드 모두 현재 test 키만 허용한다.
 
 ## 인증된 API
+
+- `GET /api/subscriptions/me`: 현재 유효 플랜, 이용 기간, 다음 결제일, 자동결제 및 해지 예약 상태 조회
+- `POST /api/subscriptions/me/cancel-at-period-end`: 현재 기간 종료 시 자동결제 해지 예약
+- `POST /api/subscriptions/me/reactivate`: 현재 기간 종료 전 자동결제 재활성화
 
 기존 Bearer JWT와 Refresh Cookie 갱신을 그대로 사용한다. 사용자 ID, 결제 금액은 클라이언트 요청에서 받지 않는다.
 
@@ -40,7 +44,7 @@
 
 프론트는 동기 ref 잠금과 버튼 비활성화로 중복 클릭을 막고, React StrictMode의 effect 재실행은 같은 Promise를 공유한다. 반환 페이지 새로고침 후 authKey가 없으면 GET 상태 조회만 한다. JWT 갱신으로 POST가 다시 전송되어도 서버의 선점 기록이 중복 청구를 막는다.
 
-FAILED/UNKNOWN/PROCESSING 주문을 READY로 자동 복구하지 않는다. 실패 재시도 기능이 범위 밖이므로 새 INITIAL 주문도 만들지 않는다. 테스트를 새로 진행하려면 새 FREE 테스트 계정을 사용한다.
+UNKNOWN/PROCESSING 주문은 자동 복구하거나 재청구하지 않는다. FAILED는 확정 실패이므로 사용자가 다시 요청할 때 기존 이력을 보존하고 새 INITIAL 주문을 만든다.
 
 ### 트랜잭션
 
