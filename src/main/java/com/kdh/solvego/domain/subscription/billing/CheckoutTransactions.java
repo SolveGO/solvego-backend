@@ -31,9 +31,12 @@ public class CheckoutTransactions {
 
     public CheckoutResponse prepare(Long userId, long amount) {
         Subscription subscription = lock(userId);
-        Payment existing = payments.findBySubscriptionIdAndType(subscription.getId(), PaymentType.INITIAL)
+        Payment existing = payments.findFirstBySubscriptionIdAndTypeOrderByRequestedAtDescIdDesc(
+                        subscription.getId(), PaymentType.INITIAL)
                 .orElse(null);
-        if (existing != null) return response(existing, subscription);
+        if (existing != null && existing.getStatus() != PaymentStatus.FAILED) {
+            return response(existing, subscription);
+        }
         if (subscription.effectivePlan(Instant.now()) == SubscriptionPlan.PRO) {
             throw new SubscriptionCheckoutException("이미 PRO 구독 중입니다.");
         }

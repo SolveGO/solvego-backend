@@ -64,7 +64,10 @@ class InitialSubscriptionIntegrationTest {
     }
 
     @AfterEach void cleanup() {
-        payments.findByOrderId(checkout.orderId()).ifPresent(payments::delete);
+        subscriptions.findByUserId(userId)
+                .ifPresent(subscription -> payments.deleteAll(
+                        payments.findAllBySubscriptionId(subscription.getId())
+                ));
         users.deleteById(userId);
     }
 
@@ -163,11 +166,18 @@ class InitialSubscriptionIntegrationTest {
         } finally { executor.shutdownNow(); }
     }
 
-    @Test void databaseRejectsAnotherInitialPaymentForSameSubscription() {
-        Subscription subscription = subscriptions.findByUserId(userId).orElseThrow();
-        assertThatThrownBy(() -> payments.saveAndFlush(new com.kdh.solvego.domain.payment.entity.Payment(
-                subscription, "pro-" + UUID.randomUUID(), com.kdh.solvego.domain.payment.type.PaymentType.INITIAL, 5000)))
-                .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+    @Test void definitiveFailureCanPrepareANewOrder() {
+        when(gateway.charge(anyString(), anyString(), anyString(), anyString(), anyLong()))
+                .thenThrow(new PaymentGatewayException(HTTP_ERROR, 403, "REJECT_CARD_COMPANY"));
+        assertThat(service.complete(userId, checkout.orderId(), request()).status())
+                .isEqualTo(PaymentStatus.FAILED);
+
+        CheckoutResponse retry = service.prepare(userId);
+
+        assertThat(retry.status()).isEqualTo(PaymentStatus.READY);
+        assertThat(retry.orderId()).isNotEqualTo(checkout.orderId());
+        assertThat(payments.findByOrderId(checkout.orderId()).orElseThrow().getStatus())
+                .isEqualTo(PaymentStatus.FAILED);
     }
 
     @Test void januaryMonthEndBecomesFebruaryMonthEnd() {

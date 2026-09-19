@@ -129,6 +129,24 @@ public class Subscription {
         cancelAtPeriodEnd = false;
     }
 
+    public void cancelAutoRenewAtPeriodEnd() {
+        autoRenew = false;
+        cancelAtPeriodEnd = true;
+    }
+
+    public boolean canReactivateAutoRenew(Instant now) {
+        return effectivePlan(now) == SubscriptionPlan.PRO
+                && customerKey != null
+                && billingKeyCiphertext != null
+                && nextBillingAt != null
+                && nextBillingAt.isAfter(now);
+    }
+
+    public void reactivateAutoRenew() {
+        autoRenew = true;
+        cancelAtPeriodEnd = false;
+    }
+
     public Long getId() {
         return id;
     }
