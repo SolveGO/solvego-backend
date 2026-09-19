@@ -103,6 +103,18 @@ public class Subscription {
     public Instant getCurrentPeriodEndAt() { return currentPeriodEndAt; }
     public Instant getNextBillingAt() { return nextBillingAt; }
     public boolean isAutoRenew() { return autoRenew; }
+    public boolean isCancelAtPeriodEnd() { return cancelAtPeriodEnd; }
+
+    public boolean isRenewalDue(Instant now) {
+        return plan == SubscriptionPlan.PRO
+                && status == SubscriptionStatus.ACTIVE
+                && autoRenew
+                && !cancelAtPeriodEnd
+                && nextBillingAt != null
+                && !nextBillingAt.isAfter(now)
+                && customerKey != null
+                && billingKeyCiphertext != null;
+    }
 
     public void initializeCustomerKey(String key) {
         if (customerKey == null) customerKey = key;

@@ -22,3 +22,7 @@ logging:
 
 jwt:
   secret: test-secret-key-test-secret-key-test-secret-key-123456
+
+payment:
+  renewal:
+    scheduler-enabled: false

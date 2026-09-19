@@ -39,6 +39,9 @@ public class Payment {
     @Column(name = "order_name", nullable = false, length = 100)
     private String orderName = "SolveGO PRO 1개월";
 
+    @Column(name = "billing_cycle_at")
+    private Instant billingCycleAt;
+
     @Column(name = "failure_code", length = 100)
     private String failureCode;
 
@@ -66,6 +69,17 @@ public class Payment {
         this.type = type;
         this.status = PaymentStatus.READY;
         this.amount = amount;
+    }
+
+    public static Payment renewal(
+            Subscription subscription,
+            String orderId,
+            long amount,
+            Instant billingCycleAt
+    ) {
+        Payment payment = new Payment(subscription, orderId, PaymentType.RENEWAL, amount);
+        payment.billingCycleAt = billingCycleAt;
+        return payment;
     }
 
     public Long getId() {
@@ -97,6 +111,7 @@ public class Payment {
     public Instant getApprovedAt() { return approvedAt; }
     public String getFailureCode() { return failureCode; }
     public Instant getFailedAt() { return failedAt; }
+    public Instant getBillingCycleAt() { return billingCycleAt; }
 
     public void startProcessing() {
         if (status != PaymentStatus.READY) throw new IllegalStateException("Payment already claimed");
