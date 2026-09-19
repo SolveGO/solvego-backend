@@ -10,7 +10,7 @@
 6. Payment SUCCEEDED와 Subscription PRO/ACTIVE를 원자적으로 반영한다. 승인 시각부터 Asia/Seoul 기준 1개월(월말 보정)이며 nextBillingAt은 기간 종료 시각, autoRenew=true, cancelAtPeriodEnd=false다.
 7. MyPage로 이동하여 `/api/users/me`, 기존 AI 사용량 API를 재조회한다. 기존 사용 횟수는 유지되고 일일 한도만 FREE 5에서 PRO 30으로 늘어난다.
 
-자동 갱신 의사/예정 시각만 저장한다. 스케줄러가 없으므로 추가 청구는 발생하지 않는다. 구독 취소·환불·실패 재시도는 구현하지 않았다. 프론트·백엔드 모두 이번 기능에서 test 키만 허용한다.
+자동 갱신 의사와 예정 시각을 저장하며, 정기결제 Scheduler가 도래한 구독을 별도 RENEWAL Payment로 청구한다. 구독 취소·환불·실패 재시도는 구현하지 않았다. 프론트·백엔드 모두 현재 test 키만 허용한다.
 
 ## 인증된 API
 
@@ -55,6 +55,12 @@ orchestration은 NOT_SUPPORTED, DB 작업은 별도 빈의 REQUIRES_NEW다.
 
 승인 후 TX4 실패 시 별도 TX로 UNKNOWN을 남긴다. DB 전체 장애로 이 기록도 실패하면 이미 커밋된 PROCESSING이 중복 청구를 차단한다. 프로세스가 외부 호출 도중 종료되어도 같은 방식으로 차단된다. DB 커밋 후 응답만 유실됐다면 조회로 SUCCEEDED를 확인할 수 있다.
 
+### 정기결제
+
+Scheduler는 `nextBillingAt`이 도래한 `PRO/ACTIVE`, `autoRenew=true` 구독을 배치로 조회한다. 각 인스턴스가 같은 대상을 조회할 수 있지만, 구독 row를 `PESSIMISTIC_WRITE`로 잠근 짧은 트랜잭션에서 청구 주기별 RENEWAL Payment를 `PROCESSING`으로 먼저 커밋한다. `V8`의 `(subscription_id, type, billing_cycle_at)` 고유 제약도 같은 주기의 중복 Payment를 차단한다.
+
+잠금을 해제한 다음 billingKey를 복호화하고 Toss 결제를 호출한다. 성공 시 별도 트랜잭션에서 Payment를 `SUCCEEDED`로 바꾸고 기존 종료 시각부터 다음 한 달로 구독 기간과 `nextBillingAt`을 이동한다. 명확한 거절은 `FAILED`, 통신 실패나 타임아웃, 승인 후 DB 반영 실패는 `UNKNOWN`이다. 현재 주기의 Payment가 하나라도 존재하면 Scheduler 대상에서 제외하므로 `PROCESSING`, `FAILED`, `UNKNOWN`을 자동 재청구하지 않는다.
+
 이 설계는 Toss와 DB 사이의 분산 원자성을 보장하지 않는다. 결제가 승인됐지만 PRO가 아직 FREE일 수 있다. 장시간 PROCESSING/UNKNOWN은 운영자가 **저장된 orderId로 Toss 테스트 상점/공식 주문 조회 API에서 승인 여부·금액을 확인**해야 한다. 확인 전 재청구/READY 변경/주문 삭제를 하지 않는다. 실제 승인이 확인되면 해당 주문과 구독의 상태·기간을 한 DB 트랜잭션으로 복구해야 한다. 자동 조회/재처리/관리자 복구 API는 이번 범위에 포함하지 않았다.
 
 ## 빌링키 보관과 로깅
@@ -91,7 +97,7 @@ AES-256-GCM, 암호화마다 무작위 12바이트 nonce, 128비트 인증 태�
 5. `http://localhost:5173`에서 새 FREE 테스트 계정으로 가입/로그인하고 MyPage → 구독 버튼 → **5,000원** 확인 → 카드 등록을 진행한다. 반환 경로는 `/billing/return`이다. 배포형 테스트에서는 이 경로도 SPA index.html로 제공해야 한다.
 6. Toss 테스트 결제창을 완료하고 MyPage의 PRO / 일일 30회와 서버 결제 기록을 확인한다. 인증 실패는 청구 전 종료된다. 결과 확인 필요 화면에서는 상태 조회만 사용한다.
 
-테스트 계정/키로만 진행한다. 자동 테스트는 PaymentGateway/SDK를 mock하며 실제 Toss API를 호출하지 않는다. 취소·환불·갱신 스케줄러는 없다.
+테스트 계정/키로만 진행한다. 자동 테스트는 PaymentGateway/SDK를 mock하며 실제 Toss API를 호출하지 않는다. 취소·환불은 구현하지 않았다.
 
 ## 검증 명령과 파일
 

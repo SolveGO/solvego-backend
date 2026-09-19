@@ -162,6 +162,26 @@ class SubscriptionMigrationTest {
                 );
                 assertThat(migratedSubscriptions.next()).isTrue();
                 assertThat(migratedSubscriptions.getInt(1)).isEqualTo(2);
+
+                ResultSet renewalCycleColumn = statement.executeQuery("""
+                        SELECT COUNT(*)
+                        FROM information_schema.columns
+                        WHERE table_schema = DATABASE()
+                          AND table_name = 'payments'
+                          AND column_name = 'billing_cycle_at'
+                        """);
+                assertThat(renewalCycleColumn.next()).isTrue();
+                assertThat(renewalCycleColumn.getInt(1)).isEqualTo(1);
+
+                ResultSet renewalCycleConstraint = statement.executeQuery("""
+                        SELECT COUNT(*)
+                        FROM information_schema.statistics
+                        WHERE table_schema = DATABASE()
+                          AND table_name = 'payments'
+                          AND index_name = 'uk_payments_renewal_cycle'
+                        """);
+                assertThat(renewalCycleConstraint.next()).isTrue();
+                assertThat(renewalCycleConstraint.getInt(1)).isEqualTo(3);
             }
         } finally {
             try (Connection connection = DriverManager.getConnection(

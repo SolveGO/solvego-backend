@@ -7,7 +7,6 @@ import com.kdh.solvego.domain.payment.gateway.dto.PaymentApprovalResult;
 import com.kdh.solvego.domain.subscription.dto.CheckoutResponse;
 import com.kdh.solvego.domain.subscription.dto.CompleteCheckoutRequest;
 import com.kdh.solvego.domain.subscription.exception.SubscriptionCheckoutException;
-import java.util.Set;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -16,11 +15,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 public class InitialSubscriptionService {
-    // Only explicit rejections are final. Duplicate/timeout/server/malformed responses need reconciliation.
-    private static final Set<String> DECLINED = Set.of("REJECT_CARD_COMPANY", "EXCEED_MAX_CARD_INSTALLMENT_PLAN",
-            "NOT_SUPPORTED_INSTALLMENT_PLAN_CARD_OR_MERCHANT", "INVALID_CARD_EXPIRATION",
-            "INVALID_CARD_NUMBER", "NOT_MATCHES_CUSTOMER_KEY", "INVALID_BILL_KEY",
-            "EXCEED_MAX_PAYMENT_AMOUNT", "EXCEED_MAX_DAILY_PAYMENT_COUNT", "REJECT_CARD_PAYMENT");
     private final CheckoutTransactions transactions;
     private final PaymentGateway gateway;
     private final BillingKeyCipher cipher;
@@ -60,10 +54,7 @@ public class InitialSubscriptionService {
                     orderId, checkout.orderName(), checkout.amount());
             return transactions.succeed(userId, orderId, approval);
         } catch (PaymentGatewayException e) {
-            boolean definitiveHttp = e.getReason() == PaymentGatewayException.Reason.HTTP_ERROR
-                    && e.getHttpStatus() != null && e.getHttpStatus() >= 400 && e.getHttpStatus() < 500
-                    && e.getFailureCode() != null
-                    && (!chargeStarted || DECLINED.contains(e.getFailureCode()));
+            boolean definitiveHttp = PaymentFailurePolicy.isDefinitive(e, chargeStarted);
             return recordFailure(userId, orderId, definitiveHttp ? e.getFailureCode() : null, !definitiveHttp);
         } catch (RuntimeException e) {
             // Includes commit failure after Toss approval. Never attach exceptions that may contain secrets.

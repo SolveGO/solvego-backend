@@ -12,7 +12,6 @@ import com.kdh.solvego.domain.subscription.repository.SubscriptionRepository;
 import com.kdh.solvego.domain.subscription.type.SubscriptionPlan;
 import com.kdh.solvego.domain.user.exception.UserNotFoundException;
 import java.time.Instant;
-import java.time.ZoneId;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -75,7 +74,7 @@ public class CheckoutTransactions {
             throw new IllegalStateException("Approval does not match checkout");
         }
         payment.markSucceeded(approval.paymentKey(), approval.approvedAt());
-        Instant end = approval.approvedAt().atZone(ZoneId.of("Asia/Seoul")).plusMonths(1).toInstant();
+        Instant end = BillingPeriods.oneMonthAfter(approval.approvedAt());
         subscription.activatePaidPro(approval.approvedAt(), end);
         return response(payment, subscription);
     }

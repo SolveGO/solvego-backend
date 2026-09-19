@@ -67,6 +67,11 @@ auth:
 payment:
   pro-monthly-amount: ${PRO_MONTHLY_AMOUNT:5000}
   billing-encryption-key: ${BILLING_KEY_ENCRYPTION_KEY:}
+  renewal:
+    scheduler-enabled: ${PRO_RENEWAL_SCHEDULER_ENABLED:true}
+    fixed-delay-ms: ${PRO_RENEWAL_FIXED_DELAY_MS:60000}
+    initial-delay-ms: ${PRO_RENEWAL_INITIAL_DELAY_MS:60000}
+    batch-size: ${PRO_RENEWAL_BATCH_SIZE:100}
   toss:
     base-url: ${TOSS_PAYMENTS_BASE_URL:https://api.tosspayments.com}
     # Empty allows non-payment features to start; gateway calls fail before sending a request.

@@ -18,6 +18,7 @@ import org.springframework.test.context.ActiveProfiles;
 import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DataJpaTest
 @ActiveProfiles("test")
@@ -61,5 +62,27 @@ class PaymentRepositoryTest {
         assertThat(found.getStatus()).isEqualTo(PaymentStatus.SUCCEEDED);
         assertThat(found.getType()).isEqualTo(PaymentType.INITIAL);
         assertThat(found.getAmount()).isEqualTo(9900);
+    }
+
+    @Test
+    @DisplayName("같은 구독과 청구 주기의 갱신 결제는 하나만 저장한다")
+    void renewal_cycle_is_unique_per_subscription() {
+        User user = userRepository.save(new User("renewal-payer", "encoded"));
+        Subscription subscription = subscriptionRepository.save(Subscription.free(user));
+        Instant billingCycleAt = Instant.parse("2026-10-01T00:00:00Z");
+
+        paymentRepository.saveAndFlush(Payment.renewal(
+                subscription,
+                "renewal-order-1",
+                9900,
+                billingCycleAt
+        ));
+
+        assertThatThrownBy(() -> paymentRepository.saveAndFlush(Payment.renewal(
+                subscription,
+                "renewal-order-2",
+                9900,
+                billingCycleAt
+        ))).isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
     }
 }
