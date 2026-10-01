@@ -21,17 +21,17 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional(propagation = Propagation.REQUIRES_NEW)
 public class CheckoutTransactions {
-    private final SubscriptionRepository subscriptions;
-    private final PaymentRepository payments;
+    private final SubscriptionRepository subscriptionRepository;
+    private final PaymentRepository paymentRepository;
 
-    public CheckoutTransactions(SubscriptionRepository subscriptions, PaymentRepository payments) {
-        this.subscriptions = subscriptions;
-        this.payments = payments;
+    public CheckoutTransactions(SubscriptionRepository subscriptionRepository, PaymentRepository paymentRepository) {
+        this.subscriptionRepository = subscriptionRepository;
+        this.paymentRepository = paymentRepository;
     }
 
     public CheckoutResponse prepare(Long userId, long amount) {
         Subscription subscription = lock(userId);
-        Payment existing = payments.findFirstBySubscriptionIdAndTypeOrderByRequestedAtDescIdDesc(
+        Payment existing = paymentRepository.findFirstBySubscriptionIdAndTypeOrderByRequestedAtDescIdDesc(
                         subscription.getId(), PaymentType.INITIAL)
                 .orElse(null);
         if (existing != null && existing.getStatus() != PaymentStatus.FAILED) {
@@ -41,14 +41,15 @@ public class CheckoutTransactions {
             throw new SubscriptionCheckoutException("이미 PRO 구독 중입니다.");
         }
         subscription.initializeCustomerKey(UUID.randomUUID().toString());
-        Payment payment = payments.save(new Payment(subscription, "pro-" + UUID.randomUUID(),
+        Payment payment = paymentRepository.save(new Payment(subscription, "pro-" + UUID.randomUUID(),
                 PaymentType.INITIAL, amount));
         return response(payment, subscription);
     }
 
     public Claim claim(Long userId, String orderId, String customerKey) {
         Subscription subscription = lock(userId);
-        Payment payment = owned(subscription, orderId);
+        Payment payment = findPayment(orderId);
+        validateInitialPayment(payment, subscription);
         if (!customerKey.equals(subscription.getCustomerKey())) {
             throw new SubscriptionCheckoutException("결제 인증 정보가 일치하지 않습니다.");
         }
@@ -57,21 +58,23 @@ public class CheckoutTransactions {
             if (subscription.effectivePlan(Instant.now()) == SubscriptionPlan.PRO) {
                 throw new SubscriptionCheckoutException("이미 PRO 구독 중입니다.");
             }
-            payment.startProcessing();
+            payment.markProcessing();
         }
         return new Claim(claimed, response(payment, subscription));
     }
 
     public void storeBillingKey(Long userId, String orderId, String ciphertext) {
         Subscription subscription = lock(userId);
-        Payment payment = owned(subscription, orderId);
+        Payment payment = findPayment(orderId);
+        validateInitialPayment(payment, subscription);
         if (payment.getStatus() != PaymentStatus.PROCESSING) throw new IllegalStateException("Invalid checkout state");
         subscription.storeBillingKey(ciphertext);
     }
 
     public CheckoutResponse succeed(Long userId, String orderId, PaymentApprovalResult approval) {
         Subscription subscription = lock(userId);
-        Payment payment = owned(subscription, orderId);
+        Payment payment = findPayment(orderId);
+        validateInitialPayment(payment, subscription);
         if (payment.getStatus() != PaymentStatus.PROCESSING) throw new IllegalStateException("Invalid checkout state");
         if (!orderId.equals(approval.orderId()) || payment.getAmount() != approval.amount()) {
             throw new IllegalStateException("Approval does not match checkout");
@@ -84,7 +87,8 @@ public class CheckoutTransactions {
 
     public CheckoutResponse fail(Long userId, String orderId, String code, boolean uncertain) {
         Subscription subscription = lock(userId);
-        Payment payment = owned(subscription, orderId);
+        Payment payment = findPayment(orderId);
+        validateInitialPayment(payment, subscription);
         if (payment.getStatus() == PaymentStatus.PROCESSING) {
             if (uncertain) payment.markUnknown();
             else payment.markFailed(code, Instant.now());
@@ -94,21 +98,29 @@ public class CheckoutTransactions {
 
     public CheckoutResponse status(Long userId, String orderId) {
         Subscription subscription = lock(userId);
-        return response(owned(subscription, orderId), subscription);
+        Payment payment = findPayment(orderId);
+        validateInitialPayment(payment, subscription);
+
+        return response(payment, subscription);
     }
 
     private Subscription lock(Long userId) {
-        return subscriptions.findByUserIdForUpdate(userId).orElseThrow(UserNotFoundException::new);
+        return subscriptionRepository.findByUserIdForUpdate(userId).orElseThrow(UserNotFoundException::new);
     }
 
-    private Payment owned(Subscription subscription, String orderId) {
-        Payment payment = payments.findByOrderId(orderId)
-                .orElseThrow(() -> new SubscriptionCheckoutException("결제 요청을 찾을 수 없습니다."));
-        if (payment.getSubscription() == null || !payment.getSubscription().getId().equals(subscription.getId())
+
+    private Payment findPayment(String orderId) {
+        return paymentRepository.findByOrderId(orderId).orElseThrow(
+                ()->new SubscriptionCheckoutException("결제 요청을 찾을 수 없습니다.")
+        );
+    }
+
+    private void validateInitialPayment(Payment payment,Subscription subscription) {
+        if(payment.getSubscription()==null
+            || !payment.getSubscription().getId().equals(subscription.getId())
                 || payment.getType() != PaymentType.INITIAL) {
             throw new SubscriptionCheckoutException("결제 요청을 찾을 수 없습니다.");
         }
-        return payment;
     }
 
     private CheckoutResponse response(Payment p, Subscription s) {

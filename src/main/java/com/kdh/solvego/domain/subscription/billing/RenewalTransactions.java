@@ -57,7 +57,7 @@ public class RenewalTransactions {
                 amount,
                 billingCycleAt
         );
-        payment.startProcessing();
+        payment.markProcessing();
         payments.save(payment);
         return new Claim(
                 true,
@@ -79,7 +79,7 @@ public class RenewalTransactions {
             throw new IllegalStateException("Approval does not match renewal");
         }
 
-        Instant billingCycleAt = payment.getBillingCycleAt();
+        Instant billingCycleAt = payment.getRenewalCycleAt();
         if (billingCycleAt == null
                 || !billingCycleAt.equals(subscription.getCurrentPeriodEndAt())
                 || !billingCycleAt.equals(subscription.getNextBillingAt())) {
