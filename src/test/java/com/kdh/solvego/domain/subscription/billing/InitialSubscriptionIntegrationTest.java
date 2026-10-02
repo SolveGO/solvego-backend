@@ -66,7 +66,7 @@ class InitialSubscriptionIntegrationTest {
     @AfterEach void cleanup() {
         subscriptions.findByUserId(userId)
                 .ifPresent(subscription -> payments.deleteAll(
-                        payments.findAllBySubscriptionId(subscription.getId())
+                        payments.findAllBySubscriptionIdOrderByRequestedAtDesc(subscription.getId())
                 ));
         users.deleteById(userId);
     }
