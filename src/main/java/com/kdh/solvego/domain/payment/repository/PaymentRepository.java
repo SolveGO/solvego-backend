@@ -9,15 +9,24 @@ import java.time.Instant;
 import com.kdh.solvego.domain.payment.type.PaymentType;
 
 public interface PaymentRepository extends JpaRepository<Payment, Long> {
-    Optional<Payment> findFirstBySubscriptionIdAndTypeOrderByRequestedAtDescIdDesc(
+
+    default Optional<Payment> findLatestInitial(Long subscriptionId) {
+        return findFirstBySubscriptionIdAndTypeOrderByRequestedAtDesc(subscriptionId, PaymentType.INITIAL);
+    }
+
+    default Optional<Payment> findRenewal(Long subscriptionId, Instant renewalCycleAt) {
+        return findBySubscriptionIdAndTypeAndRenewalCycleAt(subscriptionId, PaymentType.RENEWAL, renewalCycleAt);
+    }
+
+    Optional<Payment> findFirstBySubscriptionIdAndTypeOrderByRequestedAtDesc(
             Long subscriptionId,
             PaymentType type
     );
-    Optional<Payment> findBySubscriptionIdAndTypeAndBillingCycleAt(
+    Optional<Payment> findBySubscriptionIdAndTypeAndRenewalCycleAt(
             Long subscriptionId,
             PaymentType type,
-            Instant billingCycleAt
+            Instant renewalCycleAt
     );
     Optional<Payment> findByOrderId(String orderId);
-    List<Payment> findAllBySubscriptionId(Long subscriptionId);
+    List<Payment> findAllBySubscriptionIdOrderByRequestedAtDesc(Long subscriptionId);
 }
