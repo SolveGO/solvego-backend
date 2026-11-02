@@ -17,7 +17,6 @@ import java.time.Instant;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Payment {
 
-    // Internal database identifier for the payment.
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -54,10 +53,6 @@ public class Payment {
     @Column(name = "failure_code", length = 100)
     private String failureCode;
 
-    @CreationTimestamp
-    @Column(name = "requested_at", nullable = false, updatable = false)
-    private Instant requestedAt;
-
     @Column(name = "approved_at")
     private Instant approvedAt;
 
@@ -73,31 +68,12 @@ public class Payment {
             long amount,
             Instant renewalCycleAt
     ) {
-        validateRenewalCycleAt(type, renewalCycleAt);
-
         this.subscription = subscription;
         this.orderId = orderId;
         this.type = type;
         this.status = PaymentStatus.READY;
         this.amount = amount;
         this.renewalCycleAt = renewalCycleAt;
-    }
-
-    private static void validateRenewalCycleAt(
-            PaymentType type,
-            Instant renewalCycleAt
-    ) {
-        if (type == PaymentType.RENEWAL && renewalCycleAt == null) {
-            throw new IllegalArgumentException(
-                    "renewalCycleAt is required for renewal payment"
-            );
-        }
-
-        if (type == PaymentType.INITIAL && renewalCycleAt != null) {
-            throw new IllegalArgumentException(
-                    "renewalCycleAt must be null for initial payment"
-            );
-        }
     }
 
     // Creates an initial payment.
